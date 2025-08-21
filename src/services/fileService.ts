@@ -1,0 +1,4 @@
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import { IFileService } from '../models';
+export class FileService implements IFileService { async readFile(p: string){ return fs.readFile(p,'utf8'); } async writeFile(p: string, content: string){ await fs.mkdir(path.dirname(p),{recursive:true}); await fs.writeFile(p, content,'utf8'); } async ensureDirectory(p: string){ await fs.mkdir(p,{recursive:true}); } async pathExists(p: string){ try{ await fs.access(p); return true;} catch {return false;} } async listDirectory(p: string){ try { return await fs.readdir(p);} catch { return []; } } async stat(p: string){ try { const s= await fs.lstat(p); if(s.isFile()) return 'file'; if(s.isDirectory()) return 'dir'; return 'other'; } catch { return 'missing'; } } async copyFile(src: string, dest: string){ await fs.mkdir(path.dirname(dest),{recursive:true}); await fs.copyFile(src,dest);} async deleteFile(p: string){ try { await fs.unlink(p);} catch { } } }

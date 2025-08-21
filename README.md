@@ -1,14 +1,141 @@
-# Project
+# VS Code Copilot Catalog Manager
 
-> This repo has been populated by an initial template to help get you started. Please
-> make sure to update the content to build a great experience for community-building.
+[![Build Status](https://github.com/microsoft/vscode-copilot-catalog-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/microsoft/vscode-copilot-catalog-manager/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/microsoft.copilot-catalog-manager)](https://marketplace.visualstudio.com/items?itemName=microsoft.copilot-catalog-manager)
 
-As the maintainer of this project, please make a few updates:
+A Visual Studio Code extension that enables teams to manage and share AI assistant catalog resources (chat modes, instructions, prompts, tasks, and MCP servers) across multiple repositories inside VS Code.
 
-- Improving this README.MD file to provide a great experience
-- Updating SUPPORT.MD with content about this project's support experience
-- Understanding the security reporting process in SECURITY.MD
-- Remove this section from the README
+## ✨ Features
+
+- **🗂️ Catalog Management**: Organize and manage AI assistant resources across multiple repositories
+- **🎭 Chat Modes**: Define custom AI assistant personas and behaviors
+- **📚 Instructions**: Share reusable instruction sets for AI assistants
+- **💡 Prompts**: Manage and activate prompt templates
+- **⚡ Tasks**: Define automated task configurations
+- **🔧 MCP Integration**: Manage Model Context Protocol servers
+- **🎩 Hats (Presets)**: Save and apply resource combinations as presets
+- **🔄 Real-time Sync**: Automatically sync resources between catalogs and workspaces
+- **🎯 Multiple Sources**: Support for local directories, workspace folders, and remote URLs
+- **🚀 Team Collaboration**: Share catalog configurations across development teams
+
+## 🚀 Quick Start
+
+### Installation
+
+1. Install from VS Code Marketplace: [Copilot Catalog Manager](https://marketplace.visualstudio.com/items?itemName=microsoft.copilot-catalog-manager)
+2. Or install from VSIX: `code --install-extension copilot-catalog-manager-x.x.x.vsix`
+
+### Basic Usage
+
+1. **Open the Copilot Catalog view** in the VS Code Activity Bar
+2. **Create a template catalog**: Click the Dev menu → "Create Template Catalog"
+3. **Configure catalog sources**: Use Dev menu → "Configure Source/Target Settings"
+4. **Activate resources**: Right-click any resource and select "Activate"
+5. **Apply presets**: Use the Hats menu to apply predefined resource combinations
+
+### Example Catalog Structure
+
+```
+example-catalog/
+├── chatmodes/
+│   └── developer-assistant.chatmode.md
+├── instructions/
+│   └── code-review-guidelines.instruction.md
+├── prompts/
+│   └── bug-analysis.prompt.md
+├── tasks/
+│   └── automated-testing.task.json
+├── mcp/
+│   └── development-servers.mcp.json
+└── hats/
+    └── full-stack-dev.json
+```
+
+## 📖 Documentation
+
+- [Setup Guide](./SETUP_GUIDE.md) - Detailed installation and configuration instructions
+- [Software Architecture](./SOFTWARE_ARCHITECTURE_SPECIFICATION.md) - Technical architecture overview
+- [Test Plan](./TESTPLAN.md) - Testing strategies and test cases
+- [Changelog](./CHANGELOG.md) - Version history and release notes
+- [Catalog Display Names](./CATALOG_DISPLAY_NAMES_EXAMPLE.md) - Naming conventions and examples
+
+## 🛠️ Development
+
+### Prerequisites
+
+- Node.js 18+ and npm
+- Visual Studio Code 1.90.0+
+- TypeScript 5.4+
+
+### Building from Source
+
+```bash
+# Clone the repository
+git clone https://github.com/microsoft/vscode-copilot-catalog-manager.git
+cd vscode-copilot-catalog-manager
+
+# Install dependencies
+npm install
+
+# Build the extension
+npm run build
+
+# Run tests
+npm test
+
+# Package VSIX (Windows only)
+pwsh ./build_vsix.ps1
+```
+
+### Development Workflow
+
+1. **Follow TDD**: Write failing tests first, then implement features
+2. **Version Management**: Update `package.json` version and sync with `vsix/extension.vsixmanifest`
+3. **Testing**: Ensure all tests pass before packaging
+4. **Documentation**: Update CHANGELOG.md for each release
+
+For detailed development guidelines, see our [Development Instructions](./.github/instructions/development.instructions.md).
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guidelines](./CONTRIBUTING.md) for details.
+
+### Development Process
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Write tests for your changes
+4. Implement your feature
+5. Ensure all tests pass: `npm test`
+6. Commit your changes: `git commit -m 'Add amazing feature'`
+7. Push to the branch: `git push origin feature/amazing-feature`
+8. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🔒 Security
+
+Microsoft takes the security of our software products and services seriously. If you believe you have found a security vulnerability, please report it to us as described in our [Security Policy](SECURITY.md).
+
+## 📞 Support
+
+For support and questions, please see our [Support Guide](SUPPORT.md).
+
+## 🏷️ Versioning
+
+We use [Semantic Versioning](https://semver.org/) for release management:
+- **MAJOR**: Breaking changes
+- **MINOR**: New features (backward compatible)
+- **PATCH**: Bug fixes (backward compatible)
+
+## 🙏 Acknowledgments
+
+- Thanks to the VS Code extension development community
+- Inspired by the need for better AI assistant resource management
+- Built with ❤️ by the Microsoft team
 
 ## Contributing
 

@@ -1,0 +1,14 @@
+{
+  "type": "node",
+  "request": "launch",
+  "name": "Launch Extension",
+  "runtimeExecutable": "${execPath}",
+  "args": [
+    "--extensionDevelopmentPath=${workspaceRoot}",
+    "--extensionTestsPath=${workspaceRoot}/dist/test"
+  ],
+  "outFiles": [
+    "${workspaceRoot}/dist/**/*.js"
+  ],
+  "preLaunchTask": "Build Extension"
+}

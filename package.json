@@ -1,0 +1,115 @@
+{
+  "name": "copilot-catalog-manager",
+  "displayName": "Copilot Catalog Manager",
+  "description": "Manage AI assistant catalog resources (chat modes, instructions, prompts, tasks, MCP) across multiple repositories inside VS Code.",
+  "version": "0.1.33",
+  "publisher": "microsoft",
+  "engines": {"vscode": "^1.90.0"},
+  "categories": ["Other"],
+  "icon": "resources/icon.png",
+  "main": "dist/src/extension.js",
+  "activationEvents": ["*"],
+  "contributes": {
+  "submenus": [
+    { "id": "copilotCatalog.hatsMenu", "label": "Hats", "icon": "$(kebab-vertical)" },
+    { "id": "copilotCatalog.devMenu", "label": "Dev", "icon": "$(tools)" }
+  ],
+  "configuration": {"title": "Copilot Catalog","properties": {
+    "copilotCatalog.catalogDirectory": {
+      "type": "object",
+      "default": {},
+      "description": "Catalog paths and their display names. Each entry maps a catalog path (absolute path, relative to workspace, or http(s) URL) to its tree display text. If display text is empty, the folder name from the catalog path will be used.",
+      "patternProperties": {
+        ".*": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {
+        "type": "string"
+      },
+      "order": 10
+    },
+    "copilotCatalog.targetWorkspace": {"type": "string","default": "","description": "Explicitly sets the target workspace folder (absolute path) for activating resources. If set, all active resources will be placed in the runtime directory of this folder.","order": 20},
+    "copilotCatalog.runtimeDirectory": {"type": "string","default": ".github","description": "Name of the runtime directory for active resources","order": 30},
+    "copilotCatalog.remoteCacheTtlSeconds": {"type": "number","default": 300,"minimum": 0,"description": "TTL (seconds) for caching remote fetched resources (0 = no cache)","order": 40},
+    "copilotCatalog.autoRefresh": {"type": "boolean","default": true,"description": "Automatically refresh when files change","order": 50},
+    "copilotCatalog.showModificationWarnings": {"type": "boolean","default": true,"description": "Warn when activating over modified files","order": 60},
+    "copilotCatalog.backupBeforeOverwrite": {"type": "boolean","default": false,"description": "Create backups before overwriting files","order": 70},
+    "copilotCatalog.defaultGrouping": {"type": "string","enum": ["category","state","repository","flat"],"default": "category","description": "Default grouping mode for tree view","order": 80},
+    "copilotCatalog.taskMergeStrategy": {"type": "string","enum": ["merge","replace","skip"],"default": "merge","description": "Strategy for handling task conflicts","order": 90},
+    "copilotCatalog.enableFileLogging": {"type": "boolean","default": false,"description": "Mirror extension logs to a file under user global storage (privacy-friendly).","order": 100},
+    "copilotCatalog.catalogFilter": {"type": "string","default": "","description": "Filter resources by catalog name. Leave empty to show all catalogs.","order": 110}
+  }},
+    "viewsContainers": {"activitybar": [{"id": "copilotCatalog","title": "Copilot Catalog","icon": "resources/activity-icon-new.svg"}]},
+    "views": {"copilotCatalog": [
+      {"id": "copilotCatalogChatmodes","name": "Chat Modes","icon": "$(comment-discussion)","when": "copilotCatalog.hasResources"},
+      {"id": "copilotCatalogInstructions","name": "Instructions","icon": "$(book)","when": "copilotCatalog.hasResources"},
+      {"id": "copilotCatalogPrompts","name": "Prompts","icon": "$(symbol-text)","when": "copilotCatalog.hasResources"},
+      {"id": "copilotCatalogTasks","name": "Tasks","icon": "$(list-ordered)","when": "copilotCatalog.hasResources"},
+      {"id": "copilotCatalogMcp","name": "MCPs","icon": "$(server-process)","when": "copilotCatalog.hasResources"},
+      {"id": "copilotCatalogOverview","name": "Overview","icon": "$(home)","when": "!copilotCatalog.hasResources"}
+    ]},
+    "commands": [
+      {"command": "copilotCatalog.refresh", "title": "Copilot Catalog: Refresh", "icon": "$(refresh)"},
+  {"command": "copilotCatalog.activate", "title": "Catalog: Enable"},
+  {"command": "copilotCatalog.deactivate", "title": "Catalog: Disable"},
+      {"command": "copilotCatalog.activateAll", "title": "Copilot Catalog: Activate All", "icon": "$(check)"},
+      {"command": "copilotCatalog.deactivateAll", "title": "Copilot Catalog: Deactivate All", "icon": "$(circle-slash)"},
+      {"command": "copilotCatalog.showDiff", "title": "Copilot Catalog: Show Diff"},
+      {"command": "copilotCatalog.selectRepository", "title": "Copilot Catalog: Select Repository"},
+      {"command": "copilotCatalog.diagnostics", "title": "Copilot Catalog: Diagnostics"},
+  {"command": "copilotCatalog.openResource", "title": "Copilot Catalog: Open Resource"},
+  {"command": "copilotCatalog.editActivatedCopy", "title": "Copilot Catalog: Edit Activated Copy"},
+  {"command": "copilotCatalog.hats.apply", "title": "Copilot Catalog: Apply Hat (Preset)", "icon": {"light": "resources/icons/hat-light.svg", "dark": "resources/icons/hat-dark.svg"}},
+      {"command": "copilotCatalog.hats.createWorkspace", "title": "Copilot Catalog: Save Hat from Active (Workspace)", "icon": "$(save)"},
+  {"command": "copilotCatalog.hats.createUser", "title": "Copilot Catalog: Save Hat from Active (User)", "icon": "$(account)"},
+  {"command": "copilotCatalog.hats.delete", "title": "Copilot Catalog: Delete Hat (Workspace/User)", "icon": "$(trash)"}
+  ,
+  {"command": "copilotCatalog.dev.createTemplateCatalog", "title": "Copilot Catalog (Dev): Create Template Catalog", "icon": "$(new-folder)"},
+  {"command": "copilotCatalog.dev.configureSettings", "title": "Copilot Catalog (Dev): Configure Source/Target Settings", "icon": "$(gear)"},
+  {"command": "copilotCatalog.filterCatalog", "title": "Copilot Catalog: Filter by Catalog", "icon": "$(filter)"}
+  ,
+      {"command": "copilotCatalog.user.disable", "title": "User: Disable"},
+      {"command": "copilotCatalog.user.enable", "title": "User: Enable"}
+    ],
+    "menus": {"view/item/context": [
+        {"when": "view =~ /copilotCatalog.*/ && viewItem == resource-inactive","command": "copilotCatalog.openResource","group": "navigation@0"},
+        {"when": "view =~ /copilotCatalog.*/ && viewItem == resource-inactive","command": "copilotCatalog.editActivatedCopy","group": "navigation@1"},
+        {"when": "view =~ /copilotCatalog.*/ && viewItem == resource-modified","command": "copilotCatalog.openResource","group": "navigation@0"},
+        {"when": "view =~ /copilotCatalog.*/ && viewItem == resource-active","command": "copilotCatalog.openResource","group": "navigation@0"},
+        {"when": "view =~ /copilotCatalog.*/ && viewItem == resource-user","command": "copilotCatalog.openResource","group": "navigation@0"},
+  {"when": "view =~ /copilotCatalog.*/ && (viewItem == resource-inactive || viewItem == resource-modified)","command": "copilotCatalog.activate","group": "inline@1"},
+  {"when": "view =~ /copilotCatalog.*/ && (viewItem == resource-active || viewItem == resource-modified)","command": "copilotCatalog.deactivate","group": "inline@1"},
+        {"when": "view =~ /copilotCatalog.*/ && viewItem == resource-modified","command": "copilotCatalog.showDiff","group": "2_mod"},
+        {"when": "view =~ /copilotCatalog.*/ && viewItem == resource-user","command": "copilotCatalog.showDiff","group": "2_mod"},
+  {"when": "view =~ /copilotCatalog.*/ && viewItem == resource-user","command": "copilotCatalog.user.disable","group": "inline@1"},
+  {"when": "view =~ /copilotCatalog.*/ && viewItem == resource-user-disabled","command": "copilotCatalog.user.enable","group": "inline@1"}
+      ],"view/title": [
+        {"command": "copilotCatalog.refresh","when": "view == copilotCatalogOverview || view == copilotCatalogChatmodes","group": "navigation"},
+        {"command": "copilotCatalog.filterCatalog","when": "view == copilotCatalogOverview || view == copilotCatalogChatmodes","group": "navigation@0"},
+        {"submenu": "copilotCatalog.hatsMenu", "when": "view == copilotCatalogOverview || view == copilotCatalogChatmodes", "group": "navigation@1"},
+        {"submenu": "copilotCatalog.devMenu", "when": "view == copilotCatalogOverview || view == copilotCatalogChatmodes", "group": "navigation@9"}
+      ],
+      "copilotCatalog.hatsMenu": [
+        { "command": "copilotCatalog.hats.apply", "when": "view == copilotCatalogOverview || view == copilotCatalogChatmodes", "group": "1" },
+        { "command": "copilotCatalog.hats.createWorkspace", "when": "view == copilotCatalogOverview || view == copilotCatalogChatmodes", "group": "2" },
+        { "command": "copilotCatalog.hats.createUser", "when": "view == copilotCatalogOverview || view == copilotCatalogChatmodes", "group": "2" },
+        { "command": "copilotCatalog.hats.delete", "when": "view == copilotCatalogOverview || view == copilotCatalogChatmodes", "group": "3" }
+      ],
+      "copilotCatalog.devMenu": [
+        { "command": "copilotCatalog.dev.createTemplateCatalog", "when": "view == copilotCatalogOverview || view == copilotCatalogChatmodes", "group": "1" },
+        { "command": "copilotCatalog.dev.configureSettings", "when": "view == copilotCatalogOverview || view == copilotCatalogChatmodes", "group": "2" }
+      ]}
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/microsoft/vscode-copilot-catalog-manager.git"
+  },
+  "homepage": "https://github.com/microsoft/vscode-copilot-catalog-manager#readme",
+  "bugs": {
+    "url": "https://github.com/microsoft/vscode-copilot-catalog-manager/issues"
+  },
+  "license": "MIT",
+  "scripts": {"vscode:prepublish": "npm run build","build": "tsc -p .","watch": "tsc -w -p .","package": "echo 'vsce not installed in offline env'","test": "node dist/test/resourceService.test.js && node dist/test/treeIcons.test.js && node dist/test/naming.test.js && node dist/test/mcpMerge.test.js && node dist/test/hats.test.js && node dist/test/commandsRegistered.test.js && node dist/test/display.test.js && node dist/test/catalogDisplayName.test.js","test:all": "node dist/test/resourceService.test.js && node dist/test/treeIcons.test.js && node dist/test/naming.test.js && node dist/test/mcpMerge.test.js && node dist/test/hats.test.js && node dist/test/commandsRegistered.test.js && node dist/test/display.test.js && node dist/test/catalogDisplayName.test.js","package:vsix": "pwsh ./build_vsix.ps1"},
+  "devDependencies": {"@types/node": "^20.14.10","@types/vscode": "^1.90.0","typescript": "^5.4.0"}
+}
