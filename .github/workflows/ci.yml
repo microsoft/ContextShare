@@ -104,7 +104,7 @@ jobs:
     - name: Check manifest version sync
       run: |
         PACKAGE_VERSION=$(node -p "require('./package.json').version")
-        MANIFEST_VERSION=$(grep -Po 'Version="\K[^"]*' vsix/extension.vsixmanifest)
+        MANIFEST_VERSION=$(grep -Po '<Identity[^>]*Version="\K[^"]*' vsix/extension.vsixmanifest)
         if [ "$PACKAGE_VERSION" != "$MANIFEST_VERSION" ]; then
           echo "Version mismatch: package.json=$PACKAGE_VERSION, manifest=$MANIFEST_VERSION"
           exit 1
