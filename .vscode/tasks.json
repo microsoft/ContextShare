@@ -1,0 +1,98 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build Extension",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "build"],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": "$tsc"
+    },
+    {
+      "label": "Run Tests",
+      "type": "shell",
+      "command": "npm",
+      "args": ["test"],
+      "group": "test",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Build VSIX Package",
+      "type": "shell",
+      "command": "pwsh",
+      "args": ["-NoLogo", "-NoProfile", "-File", "./build_vsix.ps1"],
+      "group": "build",
+      "dependsOn": "Build Extension",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Install Local VSIX",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile", 
+        "-Command",
+        "$latest = Get-ChildItem . -Filter 'copilot-catalog-manager-*.vsix' | Sort-Object LastWriteTime -Descending | Select-Object -First 1; if(-not $latest){ Write-Error 'No VSIX found'; exit 1 }; code --install-extension \"$($latest.FullName)\" --force"
+      ],
+      "group": "build",
+      "dependsOn": "Build VSIX Package",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Watch Mode",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "watch"],
+      "group": "build",
+      "isBackground": true,
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      },
+      "problemMatcher": "$tsc-watch"
+    },
+    {
+      "label": "Clean Build",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-Command",
+        "Remove-Item -Path 'dist' -Recurse -Force -ErrorAction SilentlyContinue; Remove-Item -Path '*.vsix' -Force -ErrorAction SilentlyContinue; npm run build"
+      ],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      }
+    }
+  ]
+}

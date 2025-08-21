@@ -1,0 +1,19 @@
+{
+  "search.exclude": {
+    "node_modules": true,
+    "dist": true,
+    "*.vsix": true,
+    "vsix_build": true,
+    ".vscode-test": true
+  },
+  "files.exclude": {
+    "**/*.vsix": true,
+    "**/vsix_build": true,
+    "**/.vscode-test": true
+  },
+  "typescript.preferences.includePackageJsonAutoImports": "on",
+  "typescript.suggest.autoImports": true,
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "explicit"
+  }
+}
