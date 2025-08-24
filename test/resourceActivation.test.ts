@@ -2,7 +2,7 @@ import * as path from 'path';
 import { Repository, Resource, ResourceCategory, ResourceState } from '../src/models';
 import { ResourceService } from '../src/services/resourceService';
 import { MockFileService } from './fileService.mock';
-import { createTestPaths, normalizePath } from './testUtils';
+import { assertPathEquals, createTestPaths, logTestSection } from './testUtils';
 
 function createRepository(type: 'traditional' | 'direct', basePath: string): Repository {
   if (type === 'traditional') {
@@ -47,7 +47,7 @@ async function run() {
   const testPaths2 = createTestPaths('resource-activation-direct');
   
   // Test 1: Traditional structure activation with workspace fallback
-  console.log('✅ Test 1: Traditional structure activation');
+  logTestSection(1, 'Traditional structure activation');
   const traditionalRepo = createRepository('traditional', testPaths1.repoRoot);
   const traditionalStructure: Record<string, string> = {
     [path.join(testPaths1.catalogPath, 'chatmodes', 'agent.chatmode.md')]: '# Agent Mode\nHelp with development tasks.'
@@ -67,9 +67,7 @@ async function run() {
   // Verify target path uses current workspace
   const targetPath1 = svc1.getTargetPath(chatmode1);
   const expectedPath1 = path.join(testPaths1.workspaceGithub, 'chatmodes', 'agent.chatmode.md');
-  if (normalizePath(targetPath1) !== normalizePath(expectedPath1)) {
-    throw new Error(`Traditional target: expected '${expectedPath1}', got '${targetPath1}'`);
-  }
+  assertPathEquals(targetPath1, expectedPath1, 'Traditional structure target path');
   
   // Activate and verify
   const result1 = await svc1.activateResource(chatmode1);
@@ -78,7 +76,7 @@ async function run() {
   }
   
   // Test 2: Direct catalog structure activation with workspace fallback
-  console.log('✅ Test 2: Direct catalog structure activation');
+  logTestSection(2, 'Direct catalog structure activation');
   const directRepo = createRepository('direct', testPaths2.catalogPath);
   const directStructure: Record<string, string> = {
     [path.join(testPaths2.catalogPath, 'prompts', 'template.prompt.md')]: '# Template Prompt\nGenerate code templates.'
@@ -98,9 +96,7 @@ async function run() {
   // Verify target path uses current workspace (not catalog directory)
   const targetPath2 = svc2.getTargetPath(prompt2);
   const expectedPath2 = path.join(testPaths2.workspaceGithub, 'prompts', 'template.prompt.md');
-  if (normalizePath(targetPath2) !== normalizePath(expectedPath2)) {
-    throw new Error(`Direct target: expected '${expectedPath2}', got '${targetPath2}'`);
-  }
+  assertPathEquals(targetPath2, expectedPath2, 'Direct structure target path');
   
   // Activate and verify
   const result2 = await svc2.activateResource(prompt2);
@@ -109,7 +105,7 @@ async function run() {
   }
   
   // Test 3: MCP activation with different structures
-  console.log('✅ Test 3: MCP activation behavior');
+  logTestSection(3, 'MCP activation behavior');
   const testPaths3 = createTestPaths('resource-activation-mcp');
   const mcpContent = JSON.stringify({
     servers: {
@@ -136,12 +132,10 @@ async function run() {
   // MCP should always target .vscode/mcp.json in current workspace
   const mcpTargetPath = svc3.getTargetPath(mcp3);
   const expectedMcpPath = path.join(testPaths3.workspaceVscode, 'mcp.json');
-  if (normalizePath(mcpTargetPath) !== normalizePath(expectedMcpPath)) {
-    throw new Error(`MCP target: expected '${expectedMcpPath}', got '${mcpTargetPath}'`);
-  }
+  assertPathEquals(mcpTargetPath, expectedMcpPath, 'MCP always targets .vscode/mcp.json in current workspace');
   
   // Test 4: Resource state calculation
-  console.log('✅ Test 4: Resource state calculation');
+  logTestSection(4, 'Resource state calculation');
   const testPaths4 = createTestPaths('resource-activation-state');
   const stateRepo = createRepository('traditional', testPaths4.repoRoot);
   const stateStructure: Record<string, string> = {

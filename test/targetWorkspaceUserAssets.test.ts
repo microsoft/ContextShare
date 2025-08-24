@@ -1,58 +1,8 @@
 // Test that user assets are discovered from targetWorkspace location
 
 import * as path from 'path';
+import { MockFileService } from './fileService.mock';
 import { createMockFileStructure, createTestPaths } from './testUtils';
-
-// Mock file service for testing
-class MockFileService {
-  constructor(private files: Record<string, string>) {}
-  
-  async stat(filePath: string): Promise<'file' | 'dir' | 'missing'> {
-    if (this.files[filePath] !== undefined) return 'file';
-    // Check if it's a directory by seeing if any files start with this path + separator
-    const normalizedPath = filePath.replace(/\\/g, '/');
-    const hasChildren = Object.keys(this.files).some(f => 
-      f.replace(/\\/g, '/').startsWith(normalizedPath + '/')
-    );
-    return hasChildren ? 'dir' : 'missing';
-  }
-  
-  async listDirectory(dirPath: string): Promise<string[]> {
-    const normalizedPath = dirPath.replace(/\\/g, '/');
-    const children = new Set<string>();
-    
-    for (const filePath of Object.keys(this.files)) {
-      const normalizedFilePath = filePath.replace(/\\/g, '/');
-      if (normalizedFilePath.startsWith(normalizedPath + '/')) {
-        const relativePath = normalizedFilePath.substring(normalizedPath.length + 1);
-        const nextSegment = relativePath.split('/')[0];
-        children.add(nextSegment);
-      }
-    }
-    
-    return Array.from(children);
-  }
-  
-  async readFile(filePath: string): Promise<string> {
-    return this.files[filePath] || '';
-  }
-  
-  async writeFile(filePath: string, content: string): Promise<void> {
-    this.files[filePath] = content;
-  }
-  
-  async ensureDirectory(dirPath: string): Promise<void> {}
-  
-  async pathExists(filePath: string): Promise<boolean> {
-    return this.files[filePath] !== undefined;
-  }
-  
-  async copyFile(srcPath: string, destPath: string): Promise<void> {
-    if (this.files[srcPath] !== undefined) {
-      this.files[destPath] = this.files[srcPath];
-    }
-  }
-}
 
 // Mock ResourceService imports
 const ResourceService = require('../../dist/src/services/resourceService').ResourceService;

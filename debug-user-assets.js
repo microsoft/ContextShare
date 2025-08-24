@@ -2,16 +2,25 @@
 const path = require('path');
 const os = require('os');
 
-// Create portable test paths
-function createTestPaths() {
-    const tempDir = os.tmpdir();
-    const baseDir = path.join(tempDir, 'debug-user-assets');
+// Import shared utilities (would normally use ES modules, but keeping CommonJS for simplicity)
+function createTestPaths(baseName) {
+  const tempDir = os.tmpdir();
+  const baseDir = path.join(tempDir, 'copilot-catalog-tests', baseName || 'debug-user-assets');
+  
+  return {
+    // Repository paths
+    repoRoot: path.join(baseDir, 'test-repo'),
+    catalogPath: path.join(baseDir, 'test-repo', 'copilot_catalog'),
+    runtimePath: path.join(baseDir, 'test-repo', '.github'),
     
-    return {
-        catalogPath: path.join(baseDir, 'test-repo', 'copilot_catalog'),
-        workspaceRoot: path.join(baseDir, 'workspace'),
-        workspaceGithub: path.join(baseDir, 'workspace', '.github')
-    };
+    // Workspace paths  
+    workspaceRoot: path.join(baseDir, 'workspace'),
+    workspaceGithub: path.join(baseDir, 'workspace', '.github'),
+    workspaceVscode: path.join(baseDir, 'workspace', '.vscode'),
+    
+    // Base directory for cleanup
+    baseDir
+  };
 }
 
 // Mock the CORRECTED discoverRepositories function

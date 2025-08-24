@@ -1,98 +1,211 @@
 {
-  "version": "2.0.0",
-  "tasks": [
-    {
-      "label": "Build Extension",
-      "type": "shell",
-      "command": "npm",
-      "args": ["run", "build"],
-      "group": {
-        "kind": "build",
-        "isDefault": true
-      },
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "shared"
-      },
-      "problemMatcher": "$tsc"
-    },
-    {
-      "label": "Run Tests",
-      "type": "shell",
-      "command": "npm",
-      "args": ["test"],
-      "group": "test",
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "shared"
-      }
-    },
-    {
-      "label": "Build VSIX Package",
-      "type": "shell",
-      "command": "pwsh",
-      "args": ["-NoLogo", "-NoProfile", "-File", "./build_vsix.ps1"],
-      "group": "build",
-      "dependsOn": "Build Extension",
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "shared"
-      }
-    },
-    {
-      "label": "Install Local VSIX",
-      "type": "shell",
-      "command": "pwsh",
-      "args": [
-        "-NoProfile", 
-        "-Command",
-        "$latest = Get-ChildItem . -Filter 'copilot-catalog-manager-*.vsix' | Sort-Object LastWriteTime -Descending | Select-Object -First 1; if(-not $latest){ Write-Error 'No VSIX found'; exit 1 }; code --install-extension \"$($latest.FullName)\" --force"
-      ],
-      "group": "build",
-      "dependsOn": "Build VSIX Package",
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "shared"
-      }
-    },
-    {
-      "label": "Watch Mode",
-      "type": "shell",
-      "command": "npm",
-      "args": ["run", "watch"],
-      "group": "build",
-      "isBackground": true,
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "shared"
-      },
-      "problemMatcher": "$tsc-watch"
-    },
-    {
-      "label": "Clean Build",
-      "type": "shell",
-      "command": "pwsh",
-      "args": [
-        "-Command",
-        "Remove-Item -Path 'dist' -Recurse -Force -ErrorAction SilentlyContinue; Remove-Item -Path '*.vsix' -Force -ErrorAction SilentlyContinue; npm run build"
-      ],
-      "group": "build",
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "shared"
-      }
-    }
-  ]
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Build Extension",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"build"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			},
+			"problemMatcher": "$tsc"
+		},
+		{
+			"label": "Run Tests",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"test"
+			],
+			"group": "test",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			}
+		},
+		{
+			"label": "Build VSIX Package",
+			"type": "shell",
+			"command": "bash",
+			"args": [
+				"./build_vsix.sh"
+			],
+			"group": "build",
+			"dependsOn": "Build Extension",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			}
+		},
+		{
+			"label": "Install Local VSIX",
+			"type": "shell",
+			"command": "code",
+			"args": [
+				"--install-extension",
+				"${workspaceFolder}/copilot-catalog-manager-0.1.35.vsix",
+				"--force"
+			],
+			"group": "build",
+			"dependsOn": "Build VSIX Package",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			}
+		},
+		{
+			"label": "Watch Mode",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"watch"
+			],
+			"group": "build",
+			"isBackground": true,
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			},
+			"problemMatcher": "$tsc-watch"
+		},
+		{
+			"label": "Clean Build",
+			"type": "shell",
+			"command": "bash",
+			"args": [
+				"-c",
+				"rm -rf dist; rm -f *.vsix; npm run build"
+			],
+			"group": "build",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			}
+		},
+		{
+			"label": "Install Dependencies",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"install"
+			],
+			"group": "build"
+		},
+		{
+			"label": "Make Build Script Executable",
+			"type": "shell",
+			"command": "chmod +x ./build_vsix.sh"
+		},
+		{
+			"label": "Check VSIX Contents",
+			"type": "shell",
+			"command": "unzip -l copilot-catalog-manager-0.1.35.vsix | head -20"
+		},
+		{
+			"label": "List VSIX Files",
+			"type": "shell",
+			"command": "ls -la *.vsix"
+		},
+		{
+			"label": "Bump Version - Patch",
+			"type": "shell",
+			"command": "bash",
+			"args": [
+				"./build_vsix.sh",
+				"--bump",
+				"patch"
+			],
+			"group": "build",
+			"dependsOn": "Build Extension",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			}
+		},
+		{
+			"label": "Bump Version - Minor",
+			"type": "shell",
+			"command": "bash",
+			"args": [
+				"./build_vsix.sh",
+				"--bump",
+				"minor"
+			],
+			"group": "build",
+			"dependsOn": "Build Extension",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			}
+		},
+		{
+			"label": "Bump Version - Major",
+			"type": "shell",
+			"command": "bash",
+			"args": [
+				"./build_vsix.sh",
+				"--bump",
+				"major"
+			],
+			"group": "build",
+			"dependsOn": "Build Extension",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			}
+		},
+		{
+			"label": "Install Latest VSIX",
+			"type": "shell",
+			"command": "bash",
+			"args": [
+				"-c",
+				"latest=$(ls -t copilot-catalog-manager-*.vsix 2>/dev/null | head -1); if [ -n \"$latest\" ]; then echo \"Installing $latest\"; code --install-extension \"$latest\" --force; else echo \"No VSIX found\"; fi"
+			],
+			"group": "build",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			}
+		},
+		{
+			"label": "Check Latest VSIX Contents",
+			"type": "shell",
+			"command": "bash",
+			"args": [
+				"-c",
+				"latest=$(ls -t copilot-catalog-manager-*.vsix 2>/dev/null | head -1); if [ -n \"$latest\" ]; then unzip -l \"$latest\" | head -30; else echo \"No VSIX found\"; fi"
+			]
+		}
+	]
 }

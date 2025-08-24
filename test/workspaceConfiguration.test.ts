@@ -2,7 +2,7 @@ import * as path from 'path';
 import { Repository, Resource, ResourceCategory, ResourceState } from '../src/models';
 import { ResourceService } from '../src/services/resourceService';
 import { MockFileService } from './fileService.mock';
-import { createCatalogAsRootPaths, createExpectedTargets, createMockFileStructure, normalizePath } from './testUtils';
+import { assertPathEquals, createCatalogAsRootPaths, createExpectedTargets, createMockFileStructure, logTestSection } from './testUtils';
 
 function createEdgeCaseRepository(rootPath: string, catalogPath: string, runtimePath: string): Repository {
   return {
@@ -32,7 +32,7 @@ async function run() {
   console.log('Testing workspace configuration edge cases...');
   
   // Test 1: User's actual configuration scenario (catalog as repo root)
-  console.log('✅ Test 1: Real user configuration (catalog as repo root)');
+  logTestSection(1, 'Real user configuration (catalog as repo root)');
   
   // Create portable test paths
   const testPaths = createCatalogAsRootPaths('workspace-config-test');
@@ -56,12 +56,10 @@ async function run() {
   const expectedTargets = createExpectedTargets(testPaths.workspaceRoot);
   const expectedPath1 = path.join(expectedTargets.chatmode, 'test.chatmode.md');
   
-  if (normalizePath(targetPath1) !== normalizePath(expectedPath1)) {
-    throw new Error(`Expected '${expectedPath1}', got '${targetPath1}'`);
-  }
+  assertPathEquals(targetPath1, expectedPath1, 'Real user configuration target path');
   
   // Test 2: Target workspace override behavior
-  console.log('✅ Test 2: Target workspace override behavior');
+  logTestSection(2, 'Target workspace override behavior');
   const fs2 = new MockFileService({});
   const svc2 = new ResourceService(fs2 as any);
   
@@ -73,9 +71,7 @@ async function run() {
   let targetPath2 = svc2.getTargetPath(resource2);
   let expectedPath2 = path.join(expectedTargets.task, 'build.task.json');
   
-  if (normalizePath(targetPath2) !== normalizePath(expectedPath2)) {
-    throw new Error(`Initial config: expected '${expectedPath2}', got '${targetPath2}'`);
-  }
+  assertPathEquals(targetPath2, expectedPath2, 'Initial config target path');
   
   // Set explicit target workspace
   svc2.setTargetWorkspaceOverride(testPaths.altWorkspaceRoot);
@@ -83,21 +79,17 @@ async function run() {
   const altExpectedTargets = createExpectedTargets(testPaths.altWorkspaceRoot);
   expectedPath2 = path.join(altExpectedTargets.task, 'build.task.json');
   
-  if (normalizePath(targetPath2) !== normalizePath(expectedPath2)) {
-    throw new Error(`Explicit target: expected '${expectedPath2}', got '${targetPath2}'`);
-  }
+  assertPathEquals(targetPath2, expectedPath2, 'Explicit target workspace override');
   
   // Clear explicit target (back to workspace)
   svc2.setTargetWorkspaceOverride('');
   targetPath2 = svc2.getTargetPath(resource2);
   expectedPath2 = path.join(expectedTargets.task, 'build.task.json');
   
-  if (normalizePath(targetPath2) !== normalizePath(expectedPath2)) {
-    throw new Error(`Cleared target: expected '${expectedPath2}', got '${targetPath2}'`);
-  }
+  assertPathEquals(targetPath2, expectedPath2, 'Cleared target workspace override');
   
   // Test 3: MCP resource always targets .vscode in current workspace
-  console.log('✅ Test 3: MCP targeting behavior');
+  logTestSection(3, 'MCP targeting behavior');
   const fs3 = new MockFileService({});
   const svc3 = new ResourceService(fs3 as any);
   svc3.setCurrentWorkspaceRoot(testPaths.workspaceRoot);
@@ -106,9 +98,7 @@ async function run() {
   const mcpTargetPath = svc3.getTargetPath(mcpResource);
   const expectedMcpPath = expectedTargets.mcp;
   
-  if (normalizePath(mcpTargetPath) !== normalizePath(expectedMcpPath)) {
-    throw new Error(`MCP target: expected '${expectedMcpPath}', got '${mcpTargetPath}'`);
-  }
+  assertPathEquals(mcpTargetPath, expectedMcpPath, 'MCP resource always targets .vscode');
   
   console.log('🎉 All workspace configuration edge case tests passed!');
 }

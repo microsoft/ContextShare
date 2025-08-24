@@ -2,7 +2,7 @@ import * as path from 'path';
 import { Repository, Resource, ResourceCategory, ResourceState } from '../src/models';
 import { ResourceService } from '../src/services/resourceService';
 import { MockFileService } from './fileService.mock';
-import { createExpectedTargets, createTestPaths, normalizePath } from './testUtils';
+import { assertPathEquals, createExpectedTargets, createTestPaths, logTestSection } from './testUtils';
 
 function createTestResource(repo: Repository, category: ResourceCategory, fileName: string): Resource {
   return {
@@ -21,7 +21,7 @@ async function run() {
   console.log('Testing getTargetPath method...');
   
   // Test 1: Traditional structure with no target workspace override
-  console.log('✅ Test 1: Traditional structure, no target workspace override');
+  logTestSection(1, 'Traditional structure, no target workspace override');
   const traditionalRepo: Repository = {
     id: 'traditional',
     name: 'Traditional',
@@ -39,12 +39,10 @@ async function run() {
   const targetPath1 = svc1.getTargetPath(chatmodeResource);
   const expectedPath1 = '/workspace/current/.github/chatmodes/test.chatmode.md';
   
-  if (path.normalize(targetPath1) !== path.normalize(expectedPath1)) {
-    throw new Error(`Expected '${expectedPath1}', got '${targetPath1}'`);
-  }
+  assertPathEquals(targetPath1, expectedPath1, 'Traditional structure target path');
   
   // Test 2: Direct catalog structure with no target workspace override
-  console.log('✅ Test 2: Direct catalog structure, no target workspace override');
+  logTestSection(2, 'Direct catalog structure, no target workspace override');
   const testPaths = createTestPaths('target-path-direct-test');
   const directRepo: Repository = {
     id: 'direct',
@@ -64,12 +62,10 @@ async function run() {
   const expectedTargets2 = createExpectedTargets(testPaths.workspaceRoot);
   const expectedPath2 = path.join(expectedTargets2.prompt, 'test.prompt.md');
   
-  if (normalizePath(targetPath2) !== normalizePath(expectedPath2)) {
-    throw new Error(`Expected '${expectedPath2}', got '${targetPath2}'`);
-  }
+  assertPathEquals(targetPath2, expectedPath2, 'Direct catalog structure target path');
   
   // Test 3: With explicit target workspace override
-  console.log('✅ Test 3: With explicit target workspace override');
+  logTestSection(3, 'With explicit target workspace override');
   const fs3 = new MockFileService({});
   const svc3 = new ResourceService(fs3 as any);
   svc3.setCurrentWorkspaceRoot('/workspace/current');
@@ -79,12 +75,10 @@ async function run() {
   const targetPath3 = svc3.getTargetPath(instructionResource);
   const expectedPath3 = '/explicit/target/.github/instructions/test.instruction.md';
   
-  if (path.normalize(targetPath3) !== path.normalize(expectedPath3)) {
-    throw new Error(`Expected '${expectedPath3}', got '${targetPath3}'`);
-  }
+  assertPathEquals(targetPath3, expectedPath3, 'Explicit target workspace override');
   
   // Test 4: MCP resource targeting .vscode/mcp.json
-  console.log('✅ Test 4: MCP resource targeting .vscode/mcp.json');
+  logTestSection(4, 'MCP resource targeting .vscode/mcp.json');
   const fs4 = new MockFileService({});
   const svc4 = new ResourceService(fs4 as any);
   svc4.setCurrentWorkspaceRoot('/workspace/current');
@@ -93,12 +87,10 @@ async function run() {
   const targetPath4 = svc4.getTargetPath(mcpResource);
   const expectedPath4 = '/workspace/current/.vscode/mcp.json';
   
-  if (path.normalize(targetPath4) !== path.normalize(expectedPath4)) {
-    throw new Error(`Expected '${expectedPath4}', got '${targetPath4}'`);
-  }
+  assertPathEquals(targetPath4, expectedPath4, 'MCP resource targeting .vscode/mcp.json');
   
   // Test 5: MCP resource with explicit target workspace
-  console.log('✅ Test 5: MCP resource with explicit target workspace');
+  logTestSection(5, 'MCP resource with explicit target workspace');
   const fs5 = new MockFileService({});
   const svc5 = new ResourceService(fs5 as any);
   svc5.setCurrentWorkspaceRoot('/workspace/current');
@@ -108,12 +100,10 @@ async function run() {
   const targetPath5 = svc5.getTargetPath(mcpResource2);
   const expectedPath5 = '/explicit/target/.vscode/mcp.json';
   
-  if (path.normalize(targetPath5) !== path.normalize(expectedPath5)) {
-    throw new Error(`Expected '${expectedPath5}', got '${targetPath5}'`);
-  }
+  assertPathEquals(targetPath5, expectedPath5, 'MCP resource with explicit target workspace');
   
   // Test 6: No current workspace root fallback (should use repo root)
-  console.log('✅ Test 6: Fallback to repository root when no current workspace');
+  logTestSection(6, 'Fallback to repository root when no current workspace');
   const fs6 = new MockFileService({});
   const svc6 = new ResourceService(fs6 as any);
   // Don't set current workspace root
@@ -122,12 +112,10 @@ async function run() {
   const targetPath6 = svc6.getTargetPath(taskResource);
   const expectedPath6 = '/workspace/project/.github/tasks/test.task.json';
   
-  if (path.normalize(targetPath6) !== path.normalize(expectedPath6)) {
-    throw new Error(`Expected '${expectedPath6}', got '${targetPath6}'`);
-  }
+  assertPathEquals(targetPath6, expectedPath6, 'Fallback to repository root');
   
   // Test 7: Custom runtime directory
-  console.log('✅ Test 7: Custom runtime directory');
+  logTestSection(7, 'Custom runtime directory');
   const fs7 = new MockFileService({});
   const svc7 = new ResourceService(fs7 as any);
   svc7.setCurrentWorkspaceRoot('/workspace/current');
@@ -137,12 +125,10 @@ async function run() {
   const targetPath7 = svc7.getTargetPath(customResource);
   const expectedPath7 = '/workspace/current/.copilot/chatmodes/custom.chatmode.md';
   
-  if (path.normalize(targetPath7) !== path.normalize(expectedPath7)) {
-    throw new Error(`Expected '${expectedPath7}', got '${targetPath7}'`);
-  }
+  assertPathEquals(targetPath7, expectedPath7, 'Custom runtime directory');
   
   // Test 8: Empty target workspace override (should clear it)
-  console.log('✅ Test 8: Empty target workspace override');
+  logTestSection(8, 'Empty target workspace override');
   const fs8 = new MockFileService({});
   const svc8 = new ResourceService(fs8 as any);
   svc8.setCurrentWorkspaceRoot('/workspace/current');
@@ -152,9 +138,7 @@ async function run() {
   const targetPath8 = svc8.getTargetPath(emptyResource);
   const expectedPath8 = '/workspace/current/.github/prompts/empty.prompt.md';
   
-  if (path.normalize(targetPath8) !== path.normalize(expectedPath8)) {
-    throw new Error(`Expected '${expectedPath8}', got '${targetPath8}'`);
-  }
+  assertPathEquals(targetPath8, expectedPath8, 'Empty target workspace override');
   
   console.log('🎉 All getTargetPath tests passed!');
 }

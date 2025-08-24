@@ -92,6 +92,81 @@ export function normalizePath(pathStr: string): string {
 }
 
 /**
+ * Asserts that two paths are equal after normalization
+ */
+export function assertPathEquals(actual: string, expected: string, context: string): void {
+  if (normalizePath(actual) !== normalizePath(expected)) {
+    throw new Error(`${context}: expected '${expected}', got '${actual}'`);
+  }
+}
+
+/**
+ * Logs a test section with consistent formatting
+ */
+export function logTestSection(testNumber: number, description: string): void {
+  console.log(`✅ Test ${testNumber}: ${description}`);
+}
+
+/**
+ * Creates a formatted error for path mismatches
+ */
+export function createPathError(context: string, expected: string, actual: string): Error {
+  return new Error(`${context}: expected '${expected}', got '${actual}'`);
+}
+
+/**
+ * Mock repository discovery logic shared across tests and debug scripts
+ */
+export function createMockRepository(catalogPath: string, displayName: string, runtimeDirName: string = '.github'): {
+  id: string;
+  name: string;
+  rootPath: string;
+  catalogPath: string;
+  runtimePath: string;
+  isActive: boolean;
+} {
+  const absoluteCatalogPath = path.resolve(catalogPath);
+  const basename = path.basename(absoluteCatalogPath).toLowerCase();
+  
+  let repoRoot: string;
+  let runtimePath: string;
+  
+  if (basename === 'copilot_catalog') {
+    // Traditional structure: repo/copilot_catalog -> repo root is parent
+    repoRoot = path.dirname(absoluteCatalogPath);
+    runtimePath = path.join(repoRoot, runtimeDirName);
+  } else {
+    // Direct catalog directory: use catalog directory as repo root
+    repoRoot = absoluteCatalogPath;
+    runtimePath = path.join(repoRoot, runtimeDirName);
+  }
+  
+  const repoName = displayName || path.basename(absoluteCatalogPath);
+  
+  return {
+    id: path.basename(repoRoot) + '_' + path.basename(absoluteCatalogPath),
+    name: repoName,
+    rootPath: repoRoot,
+    catalogPath: absoluteCatalogPath,
+    runtimePath,
+    isActive: true
+  };
+}
+
+/**
+ * Mock multiple repositories discovery for testing
+ */
+export function mockDiscoverRepositories(catalogDirectories: Record<string, string>, runtimeDirName: string = '.github') {
+  const repos = [];
+  
+  for (const [catalogPath, displayName] of Object.entries(catalogDirectories)) {
+    repos.push(createMockRepository(catalogPath, displayName, runtimeDirName));
+  }
+  
+  return repos;
+}
+
+/**
  * Creates expected target paths for testing
  */
 export function createExpectedTargets(workspaceRoot: string) {
