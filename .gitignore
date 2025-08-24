@@ -434,3 +434,12 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# Copilot Catalog runtime activated assets (do not commit)
+.github/chatmodes/
+.github/instructions/
+.github/prompts/
+.github/tasks/
+.github/mcp/
+# Allow workflows
+!.github/workflows/
