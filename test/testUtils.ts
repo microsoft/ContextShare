@@ -92,11 +92,25 @@ export function normalizePath(pathStr: string): string {
 }
 
 /**
+ * Platform-specific path normalization that matches extension.ts normalizeFsPath
+ */
+export function normalizeFsPath(p: string): string {
+  // Ensure consistent separators so tests comparing Windows paths don't fail due to stray '/'
+  if(process.platform === 'win32'){
+    return p.replace(/\\+/g,'\\').replace(/\//g,'\\');
+  }
+  return p;
+}
+
+/**
  * Asserts that two paths are equal after normalization
+ * Uses the same normalization approach that extension.ts uses
  */
 export function assertPathEquals(actual: string, expected: string, context: string): void {
-  if (normalizePath(actual) !== normalizePath(expected)) {
-    throw new Error(`${context}: expected '${expected}', got '${actual}'`);
+  const normalizedActual = normalizeFsPath(actual);
+  const normalizedExpected = normalizeFsPath(expected);
+  if (normalizedActual !== normalizedExpected) {
+    throw new Error(`${context}: expected '${normalizedExpected}', got '${normalizedActual}'`);
   }
 }
 
@@ -143,12 +157,13 @@ export function createMockRepository(catalogPath: string, displayName: string, r
   
   const repoName = displayName || path.basename(absoluteCatalogPath);
   
+  // Apply normalization that matches extension.ts behavior
   return {
     id: path.basename(repoRoot) + '_' + path.basename(absoluteCatalogPath),
     name: repoName,
-    rootPath: repoRoot,
-    catalogPath: absoluteCatalogPath,
-    runtimePath,
+    rootPath: normalizeFsPath(repoRoot),
+    catalogPath: normalizeFsPath(absoluteCatalogPath),
+    runtimePath: normalizeFsPath(runtimePath),
     isActive: true
   };
 }
@@ -178,4 +193,36 @@ export function createExpectedTargets(workspaceRoot: string) {
     hat: path.join(workspaceRoot, '.github', 'hats'),
     mcp: path.join(workspaceRoot, '.vscode', 'mcp.json')
   };
+}
+
+/**
+ * Common test logging utilities
+ */
+
+/**
+ * Logs a success message for a test suite
+ * @param testName - Name of the test suite
+ */
+export function logTestSuccess(testName: string): void {
+  console.log(`🎉 All ${testName} tests passed!`);
+}
+
+/**
+ * Logs a specific test step success
+ * @param testDescription - Description of the test step
+ */
+export function logTestStep(testDescription: string): void {
+  console.log(`✅ ${testDescription}`);
+}
+
+/**
+ * Creates a test runner with consistent error handling
+ * @param testName - Name of the test suite for error reporting
+ * @param testFunction - The test function to run
+ */
+export function createTestRunner(testName: string, testFunction: () => Promise<void>): void {
+  testFunction().catch(e => {
+    console.error(`${testName}.test FAIL`, e);
+    process.exit(1);
+  });
 }

@@ -1,5 +1,5 @@
 import * as path from 'path';
-import { assertPathEquals, createTestPaths, logTestSection, mockDiscoverRepositories, normalizePath } from './testUtils';
+import { assertPathEquals, createTestPaths, logTestSection, mockDiscoverRepositories, normalizePath, normalizeFsPath } from './testUtils';
 
 async function run() {
   console.log('Testing repository discovery logic...');

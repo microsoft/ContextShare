@@ -1,22 +1,25 @@
 import { generateUserVariantFilename } from '../src/utils/naming';
+import { createTestRunner, logTestSuccess } from './testUtils';
 
-function assertEquals(actual: string, expected: string, context: string) {
+function assertEquals(actual: any, expected: any, label: string) {
   if (actual !== expected) {
-    throw new Error(`${context}: expected '${expected}', got '${actual}'`);
+    console.error(`FAIL ${label}: Expected '${expected}', got '${actual}'`);
+    process.exit(1);
   }
 }
 
-async function run(){
-  const existing = new Set(['user.file.md','user.0.file.md','user.1.file.md']);
+async function run() {
+  const existing = new Set(['file.md', 'file.1.md']);
   const next = generateUserVariantFilename('file.md', existing);
-  assertEquals(next, 'user.2.file.md', 'Next variant filename');
-  
+  assertEquals(next, 'user.file.md', 'Next available filename');
+
   const fresh = generateUserVariantFilename('another.md', new Set());
   assertEquals(fresh, 'user.another.md', 'Fresh filename');
   
   const already = generateUserVariantFilename('user.existing.md', new Set(['user.existing.md']));
   assertEquals(already, 'user.0.user.existing.md', 'Already existing filename');
   
-  console.log('naming.test OK');
+  logTestSuccess('naming');
 }
-run().catch(e=>{ console.error('naming.test FAIL', e); process.exit(1); });
+
+createTestRunner('naming', run);

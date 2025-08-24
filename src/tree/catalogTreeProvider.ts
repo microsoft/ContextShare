@@ -1,7 +1,9 @@
-// Optional vscode import so tests can run in plain Node environment
-let vscode: typeof import('vscode') | undefined; try { vscode = require('vscode'); } catch { /* test mode */ }
+import { getVSCode } from '../utils/vscode';
 import { CatalogTreeItem, Repository, Resource, ResourceCategory, ResourceState } from '../models';
 import { getDisplayName } from '../utils/display';
+
+const vscode = getVSCode();
+
 interface CategoryGroup { category: ResourceCategory; resources: Resource[]; }
 // Export a pure helper so tests (which do not load the full VS Code host) can validate
 // icon selection logic without depending on ThemeIcon objects.

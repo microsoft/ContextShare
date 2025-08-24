@@ -1,5 +1,6 @@
 import { computeIconId } from '../src/tree/catalogTreeProvider';
 import { ResourceState, Resource, ResourceCategory, Repository } from '../src/models';
+import { createTestRunner, logTestSuccess } from './testUtils';
 
 const repo: Repository = { id:'r', name:'r', rootPath:'/r', catalogPath:'/r/copilot_catalog', runtimePath:'/r/.github', isActive:true };
 
@@ -18,6 +19,7 @@ async function run(){
   (disabledUser as any).disabled = true;
   if(computeIconId(disabledUser) !== 'circle-slash') throw new Error('Disabled user resource should map to circle-slash');
   
-  console.log('treeIcons.test OK');
+  logTestSuccess('treeIcons');
 }
-run().catch(e=>{ console.error('treeIcons.test FAIL', e); process.exit(1); });
+
+createTestRunner('treeIcons', run);

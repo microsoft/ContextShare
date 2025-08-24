@@ -1,8 +1,7 @@
-// Optional vscode import so tests can run in plain Node environment
-let vscode: typeof import('vscode') | undefined; 
-try { vscode = require('vscode'); } catch { /* test mode */ }
-
+import { getVSCode } from '../utils/vscode';
 import { CatalogTreeItem, Repository, Resource, ResourceState } from '../models';
+
+const vscode = getVSCode();
 
 export class OverviewTreeProvider {
   private _onDidChangeTreeData = vscode ? new vscode.EventEmitter<CatalogTreeItem|void>() : { fire: (_?:any)=>{} } as any;

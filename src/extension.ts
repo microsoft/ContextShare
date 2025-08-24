@@ -10,7 +10,8 @@ import { ResourceService } from './services/resourceService';
 import { CategoryTreeProvider } from './tree/categoryTreeProvider';
 import { OverviewTreeProvider } from './tree/overviewTreeProvider';
 import { getCatalogDisplayName } from './utils/display';
-import { generateUserVariantFilename } from './utils/naming';
+import { preserveFileWithVariant } from './utils/fileOperations';
+import { handleErrorWithNotification, getErrorMessage } from './utils/errors';
 
 // Lightweight logging helper (avoids creating multiple channels)
 let logChannel: vscode.OutputChannel | undefined;
@@ -331,7 +332,7 @@ export async function activate(context: vscode.ExtensionContext) {
 					const workspaceRoot = (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0]?.uri.fsPath) || undefined;
 					const virt = await deriveVirtualRepoFromOverride(abs, workspaceRoot);
 					if(virt){ repositories.push(virt); await log(`Created virtual repository for external catalog: ${virt.catalogPath}`); break; }
-				} catch (e:any) { await log(`Virtual repo candidate failed ${abs}: ${e?.message||e}`); }
+				} catch (e:any) { await log(`Virtual repo candidate failed ${abs}: ${getErrorMessage(e)}`); }
 			}
 		}
 
@@ -352,7 +353,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				try { updateStatus(); } catch { /* ignore */ }
 			} catch(e:any){
 				log('Refresh error: ' + (e?.stack || e));
-				vscode.window.showErrorMessage('Copilot Catalog refresh failed: ' + (e?.message||e));
+				vscode.window.showErrorMessage('Copilot Catalog refresh failed: ' + getErrorMessage(e));
 			}
 		}
 
@@ -464,26 +465,14 @@ export async function activate(context: vscode.ExtensionContext) {
 					if(!choice || choice === 'Cancel') return;
 					if(choice === 'Preserve as New File'){
 						try {
-							const dir = path.dirname(runtimePath);
-							await log(`Attempting to preserve file: ${runtimePath}`);
-							await log(`Target directory: ${dir}`);
-							const entries = await fs.readdir(dir).catch(()=>[] as string[]);
-							const existing = new Set<string>(entries);
-							const newName = generateUserVariantFilename(path.basename(runtimePath), existing);
-							const newPath = path.join(dir, newName);
-							await log(`Generated new filename: ${newName}`);
-							await log(`Full new path: ${newPath}`);
-							await fs.copyFile(runtimePath, newPath);
-							await log(`Successfully preserved modified active file: ${newPath}`);
+							const newPath = await preserveFileWithVariant(runtimePath, log);
 							vscode.window.showInformationMessage(`Preserved as: ${path.basename(newPath)}`);
 							// Force refresh to show the new user resource in the tree
 							setTimeout(async () => {
 								await refresh();
 							}, 500);
 						} catch(e:any){ 
-							const errorMsg = 'Preserve-before-overwrite failed: '+(e?.message||e);
-							await log(errorMsg); 
-							vscode.window.showErrorMessage(`Failed to preserve file: ${e?.message||e}`);
+							await handleErrorWithNotification(e, 'preserve file', log, vscode);
 						}
 					}
 				}
@@ -501,27 +490,15 @@ export async function activate(context: vscode.ExtensionContext) {
 					if(choice === 'Preserve as New'){
 						// Copy current runtime file to a new user resource name before deactivation
 						const runtimePath = resourceService.getTargetPath(res);
-						const dir = path.dirname(runtimePath);
 						try {
-							await log(`Attempting to preserve file: ${runtimePath}`);
-							await log(`Target directory: ${dir}`);
-							const entries = await fs.readdir(dir).catch(()=>[] as string[]);
-							const existing = new Set<string>(entries);
-							const newName = generateUserVariantFilename(path.basename(runtimePath), existing);
-							const newPath = path.join(dir, newName);
-							await log(`Generated new filename: ${newName}`);
-							await log(`Full new path: ${newPath}`);
-							await fs.copyFile(runtimePath, newPath);
-							await log(`Successfully preserved modified resource as user file: ${newPath}`);
+							const newPath = await preserveFileWithVariant(runtimePath, log);
 							vscode.window.showInformationMessage(`Preserved as: ${path.basename(newPath)}`);
 							// Force refresh to show the new user resource in the tree
 							setTimeout(async () => {
 								await refresh();
 							}, 500);
 						} catch(e:any){ 
-							const errorMsg = 'Preserve failed: '+ (e?.message||e);
-							await log(errorMsg); 
-							vscode.window.showErrorMessage(`Failed to preserve file: ${e?.message||e}`);
+							await handleErrorWithNotification(e, 'preserve file', log, vscode);
 						}
 					}
 				}
@@ -580,7 +557,7 @@ export async function activate(context: vscode.ExtensionContext) {
 						openLabel: 'Select base folder',
 						defaultUri: wsDefault
 					});
-				} catch(e:any){ await log('showOpenDialog failed (createTemplateCatalog), falling back to manual: ' + (e?.message||e)); }
+				} catch(e:any){ await log('showOpenDialog failed (createTemplateCatalog), falling back to manual: ' + getErrorMessage(e)); }
 				if(picked && picked.length){ baseUri = picked[0]; }
 				else {
 					// fallback to manual path input
@@ -690,7 +667,7 @@ export async function activate(context: vscode.ExtensionContext) {
 						} catch { /* ignore */ }
 					}
 					await refresh();
-				} catch(e:any){ vscode.window.showErrorMessage('Failed to create template catalog: ' + (e?.message||e)); }
+				} catch(e:any){ vscode.window.showErrorMessage('Failed to create template catalog: ' + getErrorMessage(e)); }
 			}),
 			vscode.commands.registerCommand('copilotCatalog.dev.configureSettings', async () => {
 				let pick: { label: string; action: 'openSettings'|'addDirectory'|'setTarget' } | undefined;
@@ -701,7 +678,7 @@ export async function activate(context: vscode.ExtensionContext) {
 						{ label: 'Set Target Workspace…', action: 'setTarget' }
 					], { placeHolder: 'Configure catalog directories and settings' });
 				} catch(e:any){
-					await log('showQuickPick failed (configureSettings), falling back to manual selection: ' + (e?.message||e));
+					await log('showQuickPick failed (configureSettings), falling back to manual selection: ' + getErrorMessage(e));
 					const choice = await vscode.window.showInputBox({ prompt: 'Type one: openSettings | addDirectory | setTarget' });
 					if(!choice) return;
 					const v = choice.trim().toLowerCase();
@@ -716,7 +693,7 @@ export async function activate(context: vscode.ExtensionContext) {
 					try {
 						await vscode.commands.executeCommand('workbench.action.openSettings', 'copilotCatalog');
 					} catch(e:any){
-						await log('openSettings UI failed, falling back to settings.json: ' + (e?.message||e));
+						await log('openSettings UI failed, falling back to settings.json: ' + getErrorMessage(e));
 						const ws = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 						if(ws){
 							const settingsPath = path.join(ws, '.vscode', 'settings.json');
@@ -734,7 +711,7 @@ export async function activate(context: vscode.ExtensionContext) {
 					let chosen: vscode.Uri[] | undefined;
 					try {
 						chosen = await vscode.window.showOpenDialog({ canSelectFiles: false, canSelectFolders: true, canSelectMany: false, openLabel: 'Select catalog directory' });
-					} catch(e:any){ await log('showOpenDialog failed (addDirectory), falling back to manual: ' + (e?.message||e)); }
+					} catch(e:any){ await log('showOpenDialog failed (addDirectory), falling back to manual: ' + getErrorMessage(e)); }
 					let val: string | undefined;
 					if(chosen && chosen.length){ val = chosen[0].fsPath; }
 					else {
@@ -758,7 +735,7 @@ export async function activate(context: vscode.ExtensionContext) {
 					let chosen: vscode.Uri[] | undefined;
 					try {
 						chosen = await vscode.window.showOpenDialog({ canSelectFiles: false, canSelectFolders: true, canSelectMany: false, openLabel: 'Select target workspace folder' });
-					} catch(e:any){ await log('showOpenDialog failed (setTarget), falling back to manual: ' + (e?.message||e)); }
+					} catch(e:any){ await log('showOpenDialog failed (setTarget), falling back to manual: ' + getErrorMessage(e)); }
 					let val: string | undefined;
 					if(chosen && chosen.length){ val = chosen[0].fsPath; }
 					else {
@@ -835,12 +812,12 @@ export async function activate(context: vscode.ExtensionContext) {
 			vscode.commands.registerCommand('copilotCatalog.user.disable', async (item: any) => {
 				const res = pickResourceFromItem(item);
 				if(!res || (res as any).origin !== 'user'){ vscode.window.showWarningMessage('Select a user-created resource.'); return; }
-				try { await resourceService.disableUserResource(res as any); refreshAllTrees(); } catch(e:any){ vscode.window.showErrorMessage('Disable failed: ' + (e?.message||e)); }
+				try { await resourceService.disableUserResource(res as any); refreshAllTrees(); } catch(e:any){ vscode.window.showErrorMessage('Disable failed: ' + getErrorMessage(e)); }
 			}),
 			vscode.commands.registerCommand('copilotCatalog.user.enable', async (item: any) => {
 				const res = pickResourceFromItem(item);
 				if(!res || (res as any).origin !== 'user'){ vscode.window.showWarningMessage('Select a user-created resource.'); return; }
-				try { await resourceService.enableUserResource(res as any); refreshAllTrees(); } catch(e:any){ vscode.window.showErrorMessage('Enable failed: ' + (e?.message||e)); }
+				try { await resourceService.enableUserResource(res as any); refreshAllTrees(); } catch(e:any){ vscode.window.showErrorMessage('Enable failed: ' + getErrorMessage(e)); }
 			}),
 			// Catalog filter command
 			vscode.commands.registerCommand('copilotCatalog.filterCatalog', async () => {
@@ -879,7 +856,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			await refresh();
 			log('Initial refresh completed inside activate()');
 		} catch(e:any){
-			log('Initial refresh failed (continuing with commands registered): ' + (e?.message||e));
+			log('Initial refresh failed (continuing with commands registered): ' + getErrorMessage(e));
 		}
 		try { updateStatus(); } catch {}
 
