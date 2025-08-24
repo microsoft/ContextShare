@@ -36,6 +36,14 @@ async function discoverRepositories(runtimeDirName: string): Promise<Repository[
 	const repos: Repository[] = [];
 	const config = vscode.workspace.getConfiguration();
 	const catalogDirectories = config.get<Record<string, string>>('copilotCatalog.catalogDirectory', {});
+
+	function normalizeFsPath(p: string): string {
+		// Ensure consistent separators so tests comparing Windows paths don't fail due to stray '/'
+		if(process.platform === 'win32'){
+			return p.replace(/\\+/g,'\\').replace(/\//g,'\\');
+		}
+		return p;
+	}
 	
 	// If no catalog directories are configured, try to find default ones in workspace folders
 	if (Object.keys(catalogDirectories).length === 0) {
@@ -97,12 +105,13 @@ async function discoverRepositories(runtimeDirName: string): Promise<Repository[
 				
 				const repoName = displayName || path.basename(absoluteCatalogPath);
 				
+				// Normalize paths for consistency across platforms & tests
 				repos.push({
 					id: path.basename(repoRoot) + '_' + path.basename(absoluteCatalogPath),
 					name: repoName,
-					rootPath: repoRoot,
-					catalogPath: absoluteCatalogPath,
-					runtimePath,
+					rootPath: normalizeFsPath(repoRoot),
+					catalogPath: normalizeFsPath(absoluteCatalogPath),
+					runtimePath: normalizeFsPath(runtimePath),
 					isActive: true
 				});
 			} catch { /* invalid catalog path */ }

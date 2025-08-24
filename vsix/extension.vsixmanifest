@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
   <Metadata>
-  <Identity Language="en-US" Id="copilot-catalog-manager" Version="0.1.33" Publisher="microsoft" />
+  <Identity Language="en-US" Id="copilot-catalog-manager" Version="0.1.35" Publisher="microsoft" />
     <DisplayName>Copilot Catalog Manager</DisplayName>
     <Description xml:space="preserve">Manage AI assistant catalog resources (chat modes, instructions, prompts, tasks) across multiple repositories.</Description>
     <Tags>copilot,catalog,ai</Tags>
