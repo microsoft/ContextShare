@@ -1,5 +1,8 @@
 // Test that user assets are discovered from targetWorkspace location
 
+import * as path from 'path';
+import { createMockFileStructure, createTestPaths } from './testUtils';
+
 // Mock file service for testing
 class MockFileService {
   constructor(private files: Record<string, string>) {}
@@ -58,39 +61,40 @@ const { ResourceCategory, ResourceState } = require('../../dist/src/models');
 async function run() {
   console.log('Testing user asset discovery with targetWorkspace...');
   
+  // Create portable test paths
+  const testPaths = createTestPaths('target-workspace-test');
+  
   // Test repository structure (catalog is remote)
   const repository = {
     id: 'remote-catalog',
     name: 'Remote Catalog',
-    rootPath: 'Q:\\dev\\Overlake-FPGA-AI',
-    catalogPath: 'Q:\\dev\\Overlake-FPGA-AI\\copilot_catalog',
-    runtimePath: 'Q:\\dev\\Overlake-FPGA-AI\\.github',
+    rootPath: testPaths.repoRoot,
+    catalogPath: testPaths.catalogPath,
+    runtimePath: testPaths.runtimePath,
     isActive: true
   };
   
-  // Mock file structure:
-  // - Catalog has some resources
-  // - Target workspace has user assets
-  const mockFiles = {
-    // Catalog resources
-    'Q:\\dev\\Overlake-FPGA-AI\\copilot_catalog\\chatmodes\\remote.chatmode.md': 'Remote chatmode',
-    'Q:\\dev\\Overlake-FPGA-AI\\copilot_catalog\\prompts\\remote.prompt.md': 'Remote prompt',
-    
-    // User assets in target workspace (where they should be discovered from)
-    'Q:\\dev\\vscode-copilot-catalog-manager\\.github\\chatmodes\\local-user.chatmode.md': 'Local user chatmode',
-    'Q:\\dev\\vscode-copilot-catalog-manager\\.github\\prompts\\local-user.prompt.md': 'Local user prompt',
-    'Q:\\dev\\vscode-copilot-catalog-manager\\.github\\tasks\\local-build.task.json': 'Local user task',
-    
-    // Some assets in repository runtime path (should NOT be discovered when targetWorkspace is set)
-    'Q:\\dev\\Overlake-FPGA-AI\\.github\\chatmodes\\old-user.chatmode.md': 'Old user chatmode'
-  };
+  // Create mock file structure with additional test files
+  const mockFiles = createMockFileStructure(testPaths);
+  
+  // Add specific test files for this scenario
+  mockFiles[path.join(testPaths.catalogPath, 'chatmodes', 'remote.chatmode.md')] = 'Remote chatmode';
+  mockFiles[path.join(testPaths.catalogPath, 'prompts', 'remote.prompt.md')] = 'Remote prompt';
+  
+  // User assets in target workspace (where they should be discovered from)
+  mockFiles[path.join(testPaths.workspaceGithub, 'chatmodes', 'local-user.chatmode.md')] = 'Local user chatmode';
+  mockFiles[path.join(testPaths.workspaceGithub, 'prompts', 'local-user.prompt.md')] = 'Local user prompt';
+  mockFiles[path.join(testPaths.workspaceGithub, 'tasks', 'local-build.task.json')] = 'Local user task';
+  
+  // Some assets in repository runtime path (should NOT be discovered when targetWorkspace is set)
+  mockFiles[path.join(testPaths.runtimePath, 'chatmodes', 'old-user.chatmode.md')] = 'Old user chatmode';
   
   const fs = new MockFileService(mockFiles);
   const svc = new ResourceService(fs);
   
   // Configure service to use target workspace
-  svc.setTargetWorkspaceOverride('Q:\\dev\\vscode-copilot-catalog-manager');
-  svc.setCurrentWorkspaceRoot('Q:\\dev\\vscode-copilot-catalog-manager');
+  svc.setTargetWorkspaceOverride(testPaths.workspaceRoot);
+  svc.setCurrentWorkspaceRoot(testPaths.workspaceRoot);
   
   // Discover resources
   const resources = await svc.discoverResources(repository);
@@ -131,7 +135,7 @@ async function run() {
   }
   
   // Verify paths
-  const expectedTargetPath = 'Q:\\dev\\vscode-copilot-catalog-manager\\.github';
+  const expectedTargetPath = testPaths.workspaceGithub;
   if (!localUserChatmode.absolutePath.includes(expectedTargetPath)) {
     throw new Error(`User assets should be from target workspace: ${localUserChatmode.absolutePath}`);
   }
@@ -144,7 +148,7 @@ async function run() {
   
   const svc2 = new ResourceService(fs);
   // Set currentWorkspaceRoot but no targetWorkspace override
-  svc2.setCurrentWorkspaceRoot('Q:\\dev\\vscode-copilot-catalog-manager');
+  svc2.setCurrentWorkspaceRoot(testPaths.workspaceRoot);
   // No targetWorkspace override set
   
   const resources2 = await svc2.discoverResources(repository);

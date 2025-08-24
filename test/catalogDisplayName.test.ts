@@ -4,7 +4,9 @@
  * Tests the getCatalogDisplayName utility function
  */
 
+import * as path from 'path';
 import { getCatalogDisplayName } from '../src/utils/display';
+import { createTestPaths } from './testUtils';
 
 let hasErrors = false;
 
@@ -65,10 +67,12 @@ test('Should handle relative paths', () => {
 });
 
 test('Should handle Windows-style paths', () => {
+  const testPaths = createTestPaths('catalog-display-windows');
+  const windowsCatalogPath = path.join(testPaths.baseDir, 'windows-catalog');
   const mapping = {
-    'C:\\Users\\Dev\\catalog': 'Windows Catalog'
+    [windowsCatalogPath]: 'Windows Catalog'
   };
-  const result = getCatalogDisplayName('C:\\Users\\Dev\\catalog', mapping);
+  const result = getCatalogDisplayName(windowsCatalogPath, mapping);
   assertEqual(result, 'Windows Catalog');
 });
 

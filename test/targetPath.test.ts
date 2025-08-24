@@ -2,6 +2,7 @@ import * as path from 'path';
 import { Repository, Resource, ResourceCategory, ResourceState } from '../src/models';
 import { ResourceService } from '../src/services/resourceService';
 import { MockFileService } from './fileService.mock';
+import { createExpectedTargets, createTestPaths, normalizePath } from './testUtils';
 
 function createTestResource(repo: Repository, category: ResourceCategory, fileName: string): Resource {
   return {
@@ -44,24 +45,26 @@ async function run() {
   
   // Test 2: Direct catalog structure with no target workspace override
   console.log('✅ Test 2: Direct catalog structure, no target workspace override');
+  const testPaths = createTestPaths('target-path-direct-test');
   const directRepo: Repository = {
     id: 'direct',
     name: 'Direct',
-    rootPath: 'Q:\\dev\\catalog',
-    catalogPath: 'Q:\\dev\\catalog',
-    runtimePath: 'Q:\\dev\\catalog\\.github',
+    rootPath: testPaths.catalogPath,
+    catalogPath: testPaths.catalogPath,
+    runtimePath: path.join(testPaths.catalogPath, '.github'),
     isActive: true
   };
   
   const fs2 = new MockFileService({});
   const svc2 = new ResourceService(fs2 as any);
-  svc2.setCurrentWorkspaceRoot('C:\\workspace\\current');
+  svc2.setCurrentWorkspaceRoot(testPaths.workspaceRoot);
   
   const promptResource = createTestResource(directRepo, ResourceCategory.PROMPTS, 'test.prompt.md');
   const targetPath2 = svc2.getTargetPath(promptResource);
-  const expectedPath2 = 'C:\\workspace\\current\\.github\\prompts\\test.prompt.md';
+  const expectedTargets2 = createExpectedTargets(testPaths.workspaceRoot);
+  const expectedPath2 = path.join(expectedTargets2.prompt, 'test.prompt.md');
   
-  if (path.normalize(targetPath2) !== path.normalize(expectedPath2)) {
+  if (normalizePath(targetPath2) !== normalizePath(expectedPath2)) {
     throw new Error(`Expected '${expectedPath2}', got '${targetPath2}'`);
   }
   

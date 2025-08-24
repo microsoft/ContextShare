@@ -1,13 +1,27 @@
 // Debug test to understand the current behavior
 const path = require('path');
+const os = require('os');
+
+// Create portable test paths
+function createTestPaths() {
+    const tempDir = os.tmpdir();
+    const baseDir = path.join(tempDir, 'debug-repo-discovery');
+    
+    return {
+        catalogPath: path.join(baseDir, 'test-repo', 'copilot_catalog'),
+        workspaceRoot: path.join(baseDir, 'workspace'),
+        workspaceGithub: path.join(baseDir, 'workspace', '.github')
+    };
+}
 
 // Mock the discoverRepositories function to see what's happening
 function debugDiscoverRepositories(runtimeDirName) {
     const repos = [];
+    const testPaths = createTestPaths();
     
-    // Mock your current configuration
+    // Mock test configuration with portable paths
     const catalogDirectories = {
-        'Q:\\dev\\Overlake-FPGA-AI\\copilot_catalog': 'Remote'
+        [testPaths.catalogPath]: 'Remote'
     };
     
     for (const [catalogPath, displayName] of Object.entries(catalogDirectories)) {
@@ -50,15 +64,16 @@ function debugDiscoverRepositories(runtimeDirName) {
 
 // Test the current behavior
 console.log('=== Current Repository Discovery Behavior ===');
+const testPaths = createTestPaths();
 const repos = debugDiscoverRepositories('.github');
 
 console.log('\n=== Target Workspace Setting ===');
-console.log('copilotCatalog.targetWorkspace: Q:\\dev\\vscode-copilot-catalog-manager\\');
+console.log('copilotCatalog.targetWorkspace:', testPaths.workspaceRoot);
 
 console.log('\n=== Expected Behavior ===');
-console.log('User assets should be discovered from: Q:\\dev\\vscode-copilot-catalog-manager\\.github');
-console.log('Catalog assets should come from: Q:\\dev\\Overlake-FPGA-AI\\copilot_catalog');
-console.log('Catalog .github should be IGNORED: Q:\\dev\\Overlake-FPGA-AI\\.github');
+console.log('User assets should be discovered from:', testPaths.workspaceGithub);
+console.log('Catalog assets should come from:', testPaths.catalogPath);
+console.log('Catalog .github should be IGNORED:', path.join(path.dirname(testPaths.catalogPath), '.github'));
 
 console.log('\n=== Actual Behavior (WRONG) ===');
 console.log('Repository runtimePath:', repos[0].runtimePath);

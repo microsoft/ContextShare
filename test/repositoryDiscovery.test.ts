@@ -1,5 +1,6 @@
 import * as path from 'path';
 import { Repository } from '../src/models';
+import { createTestPaths, normalizePath } from './testUtils';
 
 // Mock the discoverRepositories function logic since it's in extension.ts and depends on vscode
 function mockDiscoverRepositories(catalogDirectories: Record<string, string>, runtimeDirName: string = '.github'): Repository[] {
@@ -60,43 +61,47 @@ async function run() {
   
   // Test 2: Direct catalog directory (catalog directory as repo root)
   console.log('✅ Test 2: Direct catalog directory (actual user scenario)');
+  const testPaths2 = createTestPaths('repo-discovery-direct');
+  const directCatalogPath = path.join(testPaths2.baseDir, 'ai_catalog');
   const direct = mockDiscoverRepositories({
-    'Q:\\dev\\Overlake-FPGA-AI\\ai_catalog': 'Remote Catalog'
+    [directCatalogPath]: 'Remote Catalog'
   });
   const directRepo = direct[0];
   
   // This should be treated as direct since basename is NOT 'copilot_catalog'
-  if (path.normalize(directRepo.rootPath) !== path.normalize('Q:\\dev\\Overlake-FPGA-AI\\ai_catalog')) {
-    throw new Error(`Expected rootPath 'Q:\\dev\\Overlake-FPGA-AI\\ai_catalog', got '${directRepo.rootPath}'`);
+  if (normalizePath(directRepo.rootPath) !== normalizePath(directCatalogPath)) {
+    throw new Error(`Expected rootPath '${directCatalogPath}', got '${directRepo.rootPath}'`);
   }
-  if (path.normalize(directRepo.catalogPath) !== path.normalize('Q:\\dev\\Overlake-FPGA-AI\\ai_catalog')) {
-    throw new Error(`Expected catalogPath 'Q:\\dev\\Overlake-FPGA-AI\\ai_catalog', got '${directRepo.catalogPath}'`);
+  if (normalizePath(directRepo.catalogPath) !== normalizePath(directCatalogPath)) {
+    throw new Error(`Expected catalogPath '${directCatalogPath}', got '${directRepo.catalogPath}'`);
   }
-  if (path.normalize(directRepo.runtimePath) !== path.normalize('Q:\\dev\\Overlake-FPGA-AI\\ai_catalog\\.github')) {
-    throw new Error(`Expected runtimePath 'Q:\\dev\\Overlake-FPGA-AI\\ai_catalog\\.github', got '${directRepo.runtimePath}'`);
+  if (normalizePath(directRepo.runtimePath) !== normalizePath(path.join(directCatalogPath, '.github'))) {
+    throw new Error(`Expected runtimePath '${path.join(directCatalogPath, '.github')}', got '${directRepo.runtimePath}'`);
   }
   
   // Test 2b: Traditional style but with Windows paths
   console.log('✅ Test 2b: Traditional structure with Windows paths');
+  const testPaths2b = createTestPaths('repo-discovery-traditional-win');
   const traditionalWindows = mockDiscoverRepositories({
-    'Q:\\dev\\Overlake-FPGA-AI\\copilot_catalog': 'Traditional Windows'
+    [path.join(testPaths2b.repoRoot, 'copilot_catalog')]: 'Traditional Windows'
   });
   const traditionalWinRepo = traditionalWindows[0];
   
   // This should be treated as traditional since basename IS 'copilot_catalog'
-  if (path.normalize(traditionalWinRepo.rootPath) !== path.normalize('Q:\\dev\\Overlake-FPGA-AI')) {
-    throw new Error(`Expected Windows traditional rootPath 'Q:\\dev\\Overlake-FPGA-AI', got '${traditionalWinRepo.rootPath}'`);
+  if (normalizePath(traditionalWinRepo.rootPath) !== normalizePath(testPaths2b.repoRoot)) {
+    throw new Error(`Expected Windows traditional rootPath '${testPaths2b.repoRoot}', got '${traditionalWinRepo.rootPath}'`);
   }
-  if (path.normalize(traditionalWinRepo.runtimePath) !== path.normalize('Q:\\dev\\Overlake-FPGA-AI\\.github')) {
-    throw new Error(`Expected Windows traditional runtimePath 'Q:\\dev\\Overlake-FPGA-AI\\.github', got '${traditionalWinRepo.runtimePath}'`);
+  if (normalizePath(traditionalWinRepo.runtimePath) !== normalizePath(testPaths2b.runtimePath)) {
+    throw new Error(`Expected Windows traditional runtimePath '${testPaths2b.runtimePath}', got '${traditionalWinRepo.runtimePath}'`);
   }
   
   // Test 3: Mixed configurations
   console.log('✅ Test 3: Mixed configurations');
+  const testPaths = createTestPaths('repo-discovery-mixed');
   const mixed = mockDiscoverRepositories({
-    '/workspace/project/copilot_catalog': 'Traditional',
-    '/shared/team-resources': 'Direct Team Resources',
-    'C:\\Company\\ai-catalog': 'Company Catalog'
+    [path.join(testPaths.repoRoot, 'copilot_catalog')]: 'Traditional',
+    [testPaths.altWorkspaceRoot]: 'Direct Team Resources',
+    [path.join(testPaths.baseDir, 'company-catalog')]: 'Company Catalog'
   });
   
   if (mixed.length !== 3) {
@@ -105,18 +110,18 @@ async function run() {
   
   // Verify traditional structure in mixed
   const mixedTraditional = mixed.find(r => r.name === 'Traditional');
-  if (!mixedTraditional || path.normalize(mixedTraditional.rootPath) !== path.normalize('/workspace/project')) {
+  if (!mixedTraditional || normalizePath(mixedTraditional.rootPath) !== normalizePath(testPaths.repoRoot)) {
     throw new Error('Mixed traditional structure failed');
   }
   
   // Verify direct structures in mixed
   const mixedDirect1 = mixed.find(r => r.name === 'Direct Team Resources');
-  if (!mixedDirect1 || path.normalize(mixedDirect1.rootPath) !== path.normalize('/shared/team-resources')) {
+  if (!mixedDirect1 || normalizePath(mixedDirect1.rootPath) !== normalizePath(testPaths.altWorkspaceRoot)) {
     throw new Error('Mixed direct structure 1 failed');
   }
   
   const mixedDirect2 = mixed.find(r => r.name === 'Company Catalog');
-  if (!mixedDirect2 || path.normalize(mixedDirect2.rootPath) !== path.normalize('C:\\Company\\ai-catalog')) {
+  if (!mixedDirect2 || normalizePath(mixedDirect2.rootPath) !== normalizePath(path.join(testPaths.baseDir, 'company-catalog'))) {
     throw new Error('Mixed direct structure 2 failed');
   }
   

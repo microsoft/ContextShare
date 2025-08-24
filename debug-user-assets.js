@@ -1,13 +1,28 @@
 // Debug resource discovery behavior with CORRECTED repository discovery logic
 const path = require('path');
+const os = require('os');
+
+// Create portable test paths
+function createTestPaths() {
+    const tempDir = os.tmpdir();
+    const baseDir = path.join(tempDir, 'debug-user-assets');
+    
+    return {
+        catalogPath: path.join(baseDir, 'test-repo', 'copilot_catalog'),
+        workspaceRoot: path.join(baseDir, 'workspace'),
+        workspaceGithub: path.join(baseDir, 'workspace', '.github')
+    };
+}
 
 // Mock the CORRECTED discoverRepositories function
 function debugCorrectedRepositoryDiscovery() {
-    // Your settings
+    const testPaths = createTestPaths();
+    
+    // Your settings with portable paths
     const catalogDirectories = {
-        'Q:\\dev\\Overlake-FPGA-AI\\copilot_catalog': 'Remote'
+        [testPaths.catalogPath]: 'Remote'
     };
-    const targetWorkspace = 'Q:\\dev\\vscode-copilot-catalog-manager\\';
+    const targetWorkspace = testPaths.workspaceRoot;
     const runtimeDirName = '.github';
     
     console.log('=== Testing CORRECTED Repository Discovery ===');
@@ -58,6 +73,6 @@ const repo = debugCorrectedRepositoryDiscovery();
 
 console.log('\n=== Verification ===');
 console.log('✅ Should user assets be discovered from catalog .github?', 
-    repo.runtimePath.includes('Overlake-FPGA-AI') ? 'NO - FIXED!' : 'YES - STILL BROKEN');
+    repo.runtimePath.includes('test-repo') ? 'NO - FIXED!' : 'YES - STILL BROKEN');
 console.log('✅ Should user assets be discovered from workspace .github?', 
-    repo.runtimePath.includes('vscode-copilot-catalog-manager') ? 'YES - CORRECT!' : 'NO - STILL BROKEN');
+    repo.runtimePath.includes('workspace') ? 'YES - CORRECT!' : 'NO - STILL BROKEN');

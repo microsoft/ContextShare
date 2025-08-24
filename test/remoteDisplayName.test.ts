@@ -1,15 +1,13 @@
 // Test that "Remote" display name uses workspace for runtime while keeping catalog separate
 import * as path from 'path';
+import { createTestPaths, normalizePath } from './testUtils';
 
-// Mock the required modules for testing
-const mockCatalogDirectories = {
-  'Q:\\dev\\Overlake-FPGA-AI\\copilot_catalog': 'Remote'
-};
-
-// Mock workspace folders
-const mockWorkspaceFolder = {
-  uri: { fsPath: 'Q:\\dev\\my-project' }
-};
+// Mock workspace folders helper
+function createMockWorkspaceFolder(fsPath: string) {
+  return {
+    uri: { fsPath }
+  };
+}
 
 // Import the repository discovery function - we'll need to extract it for testing
 function mockDiscoverRepositories(catalogDirectories: Record<string, string>, workspaceFolder?: any) {
@@ -63,25 +61,29 @@ function mockDiscoverRepositories(catalogDirectories: Record<string, string>, wo
 async function run() {
   console.log('Testing Remote display name behavior for workspace runtime...');
   
+  // Create portable test paths
+  const testPaths = createTestPaths('remote-display-name-test');
+  const mockWorkspaceFolder = createMockWorkspaceFolder(testPaths.workspaceRoot);
+  
   // Test 1: "Remote" with copilot_catalog basename should use traditional structure
   const remoteRepo = mockDiscoverRepositories({
-    'Q:\\dev\\Overlake-FPGA-AI\\copilot_catalog': 'Remote'
+    [path.join(testPaths.repoRoot, 'copilot_catalog')]: 'Remote'
   }, mockWorkspaceFolder)[0];
   
   // With "Remote" display name but copilot_catalog basename, should use traditional structure
-  const expectedRootPath = 'Q:\\dev\\Overlake-FPGA-AI';
-  const expectedRuntimePath = 'Q:\\dev\\Overlake-FPGA-AI\\.github';
-  const expectedCatalogPath = 'Q:\\dev\\Overlake-FPGA-AI\\copilot_catalog';
+  const expectedRootPath = testPaths.repoRoot;
+  const expectedRuntimePath = testPaths.runtimePath;
+  const expectedCatalogPath = path.join(testPaths.repoRoot, 'copilot_catalog');
   
-  if (path.normalize(remoteRepo.rootPath) !== path.normalize(expectedRootPath)) {
+  if (normalizePath(remoteRepo.rootPath) !== normalizePath(expectedRootPath)) {
     throw new Error(`Expected Remote catalog rootPath '${expectedRootPath}', got '${remoteRepo.rootPath}'`);
   }
   
-  if (path.normalize(remoteRepo.runtimePath) !== path.normalize(expectedRuntimePath)) {
+  if (normalizePath(remoteRepo.runtimePath) !== normalizePath(expectedRuntimePath)) {
     throw new Error(`Expected Remote catalog runtimePath '${expectedRuntimePath}', got '${remoteRepo.runtimePath}'`);
   }
   
-  if (path.normalize(remoteRepo.catalogPath) !== path.normalize(expectedCatalogPath)) {
+  if (normalizePath(remoteRepo.catalogPath) !== normalizePath(expectedCatalogPath)) {
     throw new Error(`Expected Remote catalog catalogPath '${expectedCatalogPath}', got '${remoteRepo.catalogPath}'`);
   }
   
@@ -89,35 +91,38 @@ async function run() {
   
   // Test 2: "Remote" with non-copilot_catalog basename should use workspace for runtime
   const remoteFallbackRepo = mockDiscoverRepositories({
-    'Q:\\dev\\some-other-catalog': 'Remote'
+    [path.join(testPaths.baseDir, 'some-other-catalog')]: 'Remote'
   }, mockWorkspaceFolder)[0];
   
-  const expectedFallbackRootPath = 'Q:\\dev\\my-project';
-  const expectedFallbackRuntimePath = 'Q:\\dev\\my-project\\.github';
+  const expectedFallbackRootPath = testPaths.workspaceRoot;
+  const expectedFallbackRuntimePath = testPaths.workspaceGithub;
   
-  if (path.normalize(remoteFallbackRepo.rootPath) !== path.normalize(expectedFallbackRootPath)) {
+  if (normalizePath(remoteFallbackRepo.rootPath) !== normalizePath(expectedFallbackRootPath)) {
     throw new Error(`Expected Remote non-copilot_catalog rootPath '${expectedFallbackRootPath}', got '${remoteFallbackRepo.rootPath}'`);
   }
   
-  if (path.normalize(remoteFallbackRepo.runtimePath) !== path.normalize(expectedFallbackRuntimePath)) {
+  if (normalizePath(remoteFallbackRepo.runtimePath) !== normalizePath(expectedFallbackRuntimePath)) {
     throw new Error(`Expected Remote non-copilot_catalog runtimePath '${expectedFallbackRuntimePath}', got '${remoteFallbackRepo.runtimePath}'`);
   }
   
   console.log('✅ Remote catalog with non-copilot_catalog basename uses workspace for runtime');
   
   // Test 3: Traditional copilot_catalog structure should still work
+  const traditionalTestPaths = createTestPaths('remote-display-traditional-test');
+  const traditionalMockWorkspace = createMockWorkspaceFolder(traditionalTestPaths.workspaceRoot);
+  
   const traditionalRepo = mockDiscoverRepositories({
-    'Q:\\dev\\Overlake-FPGA-AI\\copilot_catalog': 'Traditional'
-  }, mockWorkspaceFolder)[0];
+    [path.join(traditionalTestPaths.repoRoot, 'copilot_catalog')]: 'Traditional'
+  }, traditionalMockWorkspace)[0];
   
-  const expectedTraditionalRootPath = 'Q:\\dev\\Overlake-FPGA-AI';
-  const expectedTraditionalRuntimePath = 'Q:\\dev\\Overlake-FPGA-AI\\.github';
+  const expectedTraditionalRootPath = traditionalTestPaths.repoRoot;
+  const expectedTraditionalRuntimePath = traditionalTestPaths.runtimePath;
   
-  if (path.normalize(traditionalRepo.rootPath) !== path.normalize(expectedTraditionalRootPath)) {
+  if (normalizePath(traditionalRepo.rootPath) !== normalizePath(expectedTraditionalRootPath)) {
     throw new Error(`Expected Traditional catalog rootPath '${expectedTraditionalRootPath}', got '${traditionalRepo.rootPath}'`);
   }
   
-  if (path.normalize(traditionalRepo.runtimePath) !== path.normalize(expectedTraditionalRuntimePath)) {
+  if (normalizePath(traditionalRepo.runtimePath) !== normalizePath(expectedTraditionalRuntimePath)) {
     throw new Error(`Expected Traditional catalog runtimePath '${expectedTraditionalRuntimePath}', got '${traditionalRepo.runtimePath}'`);
   }
   
