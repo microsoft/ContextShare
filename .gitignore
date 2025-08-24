@@ -443,3 +443,4 @@ FodyWeavers.xsd
 .github/mcp/
 # Allow workflows
 !.github/workflows/
+.vscode/settings.json
