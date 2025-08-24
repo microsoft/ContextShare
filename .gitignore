@@ -3,6 +3,7 @@ node_modules
 dist
 *.vsix
 vsix_build/
+build/
 .vscode-test
 temp_vsix_*/
 

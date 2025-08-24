@@ -2,7 +2,7 @@
   "name": "copilot-catalog-manager",
   "displayName": "Copilot Catalog Manager",
   "description": "Manage AI assistant catalog resources (chat modes, instructions, prompts, tasks, MCP) across multiple repositories inside VS Code.",
-  "version": "0.1.33",
+  "version": "0.1.35",
   "publisher": "microsoft",
   "engines": {"vscode": "^1.90.0"},
   "categories": ["Other"],
@@ -46,7 +46,7 @@
       {"id": "copilotCatalogInstructions","name": "Instructions","icon": "$(book)","when": "copilotCatalog.hasResources"},
       {"id": "copilotCatalogPrompts","name": "Prompts","icon": "$(symbol-text)","when": "copilotCatalog.hasResources"},
       {"id": "copilotCatalogTasks","name": "Tasks","icon": "$(list-ordered)","when": "copilotCatalog.hasResources"},
-      {"id": "copilotCatalogMcp","name": "MCPs","icon": "$(server-process)","when": "copilotCatalog.hasResources"},
+  {"id": "copilotCatalogMcp","name": "MCPs (Soon)","icon": "$(server-process)","when": "copilotCatalog.hasResources"},
       {"id": "copilotCatalogOverview","name": "Overview","icon": "$(home)","when": "!copilotCatalog.hasResources"}
     ]},
     "commands": [
@@ -110,6 +110,6 @@
     "url": "https://github.com/microsoft/vscode-copilot-catalog-manager/issues"
   },
   "license": "MIT",
-  "scripts": {"vscode:prepublish": "npm run build","build": "tsc -p .","watch": "tsc -w -p .","package": "echo 'vsce not installed in offline env'","test": "node dist/test/resourceService.test.js && node dist/test/treeIcons.test.js && node dist/test/naming.test.js && node dist/test/mcpMerge.test.js && node dist/test/hats.test.js && node dist/test/commandsRegistered.test.js && node dist/test/display.test.js && node dist/test/catalogDisplayName.test.js","test:all": "node dist/test/resourceService.test.js && node dist/test/treeIcons.test.js && node dist/test/naming.test.js && node dist/test/mcpMerge.test.js && node dist/test/hats.test.js && node dist/test/commandsRegistered.test.js && node dist/test/display.test.js && node dist/test/catalogDisplayName.test.js","package:vsix": "pwsh ./build_vsix.ps1"},
+  "scripts": {"vscode:prepublish": "npm run build","build": "tsc -p .","watch": "tsc -w -p .","package": "echo 'vsce not installed in offline env'","test": "node dist/test/resourceService.test.js && node dist/test/treeIcons.test.js && node dist/test/naming.test.js && node dist/test/mcpMerge.test.js && node dist/test/hats.test.js && node dist/test/commandsRegistered.test.js && node dist/test/display.test.js && node dist/test/catalogDisplayName.test.js && node dist/test/repositoryDiscovery.test.js && node dist/test/targetPath.test.js && node dist/test/workspaceConfiguration.test.js && node dist/test/resourceActivation.test.js","test:all": "node dist/test/resourceService.test.js && node dist/test/treeIcons.test.js && node dist/test/naming.test.js && node dist/test/mcpMerge.test.js && node dist/test/hats.test.js && node dist/test/commandsRegistered.test.js && node dist/test/display.test.js && node dist/test/catalogDisplayName.test.js && node dist/test/repositoryDiscovery.test.js && node dist/test/targetPath.test.js && node dist/test/workspaceConfiguration.test.js && node dist/test/resourceActivation.test.js","test:edge-cases": "node dist/test/repositoryDiscovery.test.js && node dist/test/targetPath.test.js && node dist/test/workspaceConfiguration.test.js && node dist/test/resourceActivation.test.js","package:vsix": "pwsh ./build_vsix.ps1"},
   "devDependencies": {"@types/node": "^20.14.10","@types/vscode": "^1.90.0","typescript": "^5.4.0"}
 }

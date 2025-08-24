@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog and this project adheres to Semantic Versioning when feasible.
 
+## [0.1.35] - 2025-08-23
+### Changed
+- Duplicate handling logic: when a catalog (or remote) resource is ACTIVE or MODIFIED its corresponding runtime copy is no longer shown as a separate `user` item; instead the catalog entry with its state icon is kept. This prevents seeing both "user" and catalog rows for the same activated asset across multiple catalogs.
+
+
+## [0.1.34] - 2025-08-22
+### Changed
+- Renamed the MCPs view title to "MCPs (Soon)" to indicate upcoming functionality.
+
 ## [0.1.31] - 2025-08-20
 ### Added
 - Custom catalog display names: Users can now set friendly display names for catalog directories via `copilotCatalog.catalogDisplayNames` setting

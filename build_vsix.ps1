@@ -90,6 +90,14 @@ try {
   Write-Host "Created $pkgName.vsix"
   Write-Host "Install with: code --install-extension .\$pkgName.vsix"
   
+  # Copy VSIX to build folder
+  if(-not (Test-Path 'build')){ 
+    New-Item -ItemType Directory -Path 'build' | Out-Null
+    Write-Host "Created build directory"
+  }
+  Copy-Item "$pkgName.vsix" "build/$pkgName.vsix" -Force
+  Write-Host "Copied $pkgName.vsix to build folder"
+  
   # Cleanup the staging folder so stale copies are not left around
   try {
     if(Test-Path 'vsix_build'){

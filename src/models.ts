@@ -85,6 +85,7 @@ export interface IResourceService {
 	setRemoteCacheTtl(seconds: number): void;
 	setRootCatalogOverride(root?: string): void;
 	setTargetWorkspaceOverride(path?: string): void;
+	setCurrentWorkspaceRoot(path?: string): void;
 	setRuntimeDirectoryName(name: string): void;
 	clearRemoteCache(): void;
 	enableUserResource(resource: Resource): Promise<OperationResult>;

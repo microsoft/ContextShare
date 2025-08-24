@@ -6,14 +6,21 @@
     "vsix_build": true,
     ".vscode-test": true
   },
-  "files.exclude": {
-    "**/*.vsix": true,
-    "**/vsix_build": true,
-    "**/.vscode-test": true
-  },
   "typescript.preferences.includePackageJsonAutoImports": "on",
   "typescript.suggest.autoImports": true,
   "editor.codeActionsOnSave": {
     "source.organizeImports": "explicit"
-  }
+  },
+    "copilotCatalog.catalogDirectory": {
+      "Q:\\dev\\Overlake-FPGA-AI\\copilot_catalog": "Remote"
+    },
+  "files.exclude": {
+    ".git": true,
+    "**/.DS_Store": false,
+    "**/.git": false,
+    "**/.hg": false,
+    "**/.svn": false,
+    "**/Thumbs.db": false
+  },
+  "copilotCatalog.targetWorkspace": "Q:\\dev\\vscode-copilot-catalog-manager\\"
 }

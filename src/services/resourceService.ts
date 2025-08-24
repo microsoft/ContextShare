@@ -1,9 +1,9 @@
-import * as path from 'path';
-import { ActivateOptions, IFileService, IResourceService, OperationResult, Repository, Resource, ResourceCategory, ResourceState, ResourceOrigin } from '../models';
 import * as fs from 'fs/promises';
-import * as https from 'https';
 import { IncomingMessage } from 'http';
-import { sanitizeFilename, isSafeRelativeEntry } from '../utils/security';
+import * as https from 'https';
+import * as path from 'path';
+import { ActivateOptions, IFileService, IResourceService, OperationResult, Repository, Resource, ResourceCategory, ResourceState } from '../models';
+import { isSafeRelativeEntry, sanitizeFilename } from '../utils/security';
 
 const CATEGORY_DIRS: Record<ResourceCategory,string> = { chatmodes:'chatmodes', instructions:'instructions', prompts:'prompts', tasks:'tasks', mcp:'mcp'};
 
@@ -13,11 +13,16 @@ export class ResourceService implements IResourceService {
   private remoteCache: Map<string,{timestamp:number; content:string}> = new Map();
   private rootCatalogOverride?: string;
   private targetWorkspaceOverride?: string;
+  private currentWorkspaceRoot?: string;
   private runtimeDirectoryName: string = '.github'; // Default runtime directory
   constructor(private fileService: IFileService){}
 
   setTargetWorkspaceOverride(path?: string){
     this.targetWorkspaceOverride = path && path.trim() ? path : undefined;
+  }
+
+  setCurrentWorkspaceRoot(path?: string){
+    this.currentWorkspaceRoot = path && path.trim() ? path : undefined;
   }
 
   setRuntimeDirectoryName(name: string){
@@ -140,8 +145,13 @@ export class ResourceService implements IResourceService {
     }
     // User created runtime-only resources (exist in runtime but not catalog). We treat them as ACTIVE and origin 'user'
     const runtimeUser: Resource[] = [];
+    
+    // Determine where to look for user assets - use target workspace override if set, otherwise repository runtime path
+    const userAssetBaseDir = this.targetWorkspaceOverride || this.currentWorkspaceRoot || repository.rootPath;
+    const userAssetRuntimePath = path.join(userAssetBaseDir, this.runtimeDirectoryName);
+    
     for(const category of Object.values(ResourceCategory)){
-      const runtimeDir = path.join(repository.runtimePath, CATEGORY_DIRS[category]);
+      const runtimeDir = path.join(userAssetRuntimePath, CATEGORY_DIRS[category]);
       const entries = await this.safeList(runtimeDir);
       for(const entry of entries){
         const runtimeFull = path.join(runtimeDir, entry);
@@ -292,13 +302,15 @@ export class ResourceService implements IResourceService {
   getTargetPath(resource: Resource){
     // MCP targets the workspace-level .vscode/mcp.json file (not under runtime dir)
     if(resource.category === ResourceCategory.MCP){
-      const base = this.targetWorkspaceOverride || resource.repository.rootPath;
+      const base = this.targetWorkspaceOverride || this.currentWorkspaceRoot || resource.repository.rootPath;
       return path.join(base, '.vscode', 'mcp.json');
     }
     if(this.targetWorkspaceOverride){
       return path.join(this.targetWorkspaceOverride, this.runtimeDirectoryName, resource.targetSubdir, path.basename(resource.relativePath));
     }
-    return path.join(resource.repository.runtimePath, resource.targetSubdir, path.basename(resource.relativePath));
+    // When no target workspace override is set, use current workspace root if available, otherwise fall back to repository root
+    const base = this.currentWorkspaceRoot || resource.repository.rootPath;
+    return path.join(base, this.runtimeDirectoryName, resource.targetSubdir, path.basename(resource.relativePath));
   }
 
   async activateResource(resource: Resource, _options?: ActivateOptions): Promise<OperationResult>{

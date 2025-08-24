@@ -1,17 +1,16 @@
 /// <reference path="./shims-node.d.ts" />
 
+import * as fs from 'fs/promises';
+import * as path from 'path';
 import * as vscode from 'vscode';
+import { Repository, Resource, ResourceCategory, ResourceState } from './models';
 import { FileService } from './services/fileService';
+import { HatService } from './services/hatService';
 import { ResourceService } from './services/resourceService';
-import { CatalogTreeProvider } from './tree/catalogTreeProvider';
 import { CategoryTreeProvider } from './tree/categoryTreeProvider';
 import { OverviewTreeProvider } from './tree/overviewTreeProvider';
-import { Repository, Resource, ResourceState, ResourceCategory } from './models';
-import * as path from 'path';
-import * as fs from 'fs/promises';
-import { generateUserVariantFilename } from './utils/naming';
-import { HatService } from './services/hatService';
 import { getCatalogDisplayName } from './utils/display';
+import { generateUserVariantFilename } from './utils/naming';
 
 // Lightweight logging helper (avoids creating multiple channels)
 let logChannel: vscode.OutputChannel | undefined;
@@ -73,9 +72,29 @@ async function discoverRepositories(runtimeDirName: string): Promise<Repository[
 				
 				await vscode.workspace.fs.stat(vscode.Uri.file(absoluteCatalogPath));
 				
-				// Determine the repo root (parent of catalog directory)
-				const repoRoot = path.dirname(absoluteCatalogPath);
-				const runtimePath = path.join(repoRoot, runtimeDirName);
+				// Determine the repo root and runtime path based on target workspace setting
+				let repoRoot: string;
+				let runtimePath: string;
+				
+				// Check if targetWorkspace is explicitly set
+				const targetWorkspace = config.get<string>('copilotCatalog.targetWorkspace');
+				if (targetWorkspace && targetWorkspace.trim()) {
+					// When targetWorkspace is set, use it as the repository root
+					repoRoot = targetWorkspace.trim();
+					runtimePath = path.join(repoRoot, runtimeDirName);
+				} else {
+					// Fallback to old logic when no targetWorkspace is set
+					if (path.basename(absoluteCatalogPath).toLowerCase() === 'copilot_catalog') {
+						// Traditional structure: repo/copilot_catalog -> repo root is parent
+						repoRoot = path.dirname(absoluteCatalogPath);
+						runtimePath = path.join(repoRoot, runtimeDirName);
+					} else {
+						// Direct catalog directory: use catalog directory as repo root
+						repoRoot = absoluteCatalogPath;
+						runtimePath = path.join(repoRoot, runtimeDirName);
+					}
+				}
+				
 				const repoName = displayName || path.basename(absoluteCatalogPath);
 				
 				repos.push({
@@ -128,6 +147,11 @@ export async function activate(context: vscode.ExtensionContext) {
 		logFilePath = path.join(context.globalStorageUri.fsPath, LOG_FILENAME);
 		// Respect target workspace override on startup
 		resourceService.setTargetWorkspaceOverride(config.get<string>('copilotCatalog.targetWorkspace'));
+		// Set current workspace root as fallback for target workspace
+		const currentWorkspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+		if (currentWorkspaceRoot) {
+			resourceService.setCurrentWorkspaceRoot(currentWorkspaceRoot);
+		}
 		resourceService.setRuntimeDirectoryName(runtimeDirName);
 		resourceService.setRemoteCacheTtl(config.get<number>('copilotCatalog.remoteCacheTtlSeconds', 300));
 
@@ -161,31 +185,46 @@ export async function activate(context: vscode.ExtensionContext) {
 			const cfg = vscode.workspace.getConfiguration();
 			const catalogDirectories = cfg.get<Record<string, string>>('copilotCatalog.catalogDirectory', {});
 			const allResources: Resource[] = [];
+			// We'll collect catalog resources first, then add user/runtime resources exactly once
+			const catalogOnly: Resource[] = [];
+			let addedUserRuntime = false;
 			
 			// If catalog directories are configured, use them
 			const directoryPaths = Object.keys(catalogDirectories);
 			if (directoryPaths.length > 0) {
 				for (const directory of directoryPaths) {
 					try {
-						// Set the directory as the root catalog path
+						// Capture previous overrides so we can restore after each catalog scan
+						const prevRoot = (resourceService as any).rootCatalogOverride;
+						// Set ONLY for catalog scanning – user runtime scan must not use this root override
 						resourceService.setRootCatalogOverride(directory);
 						resourceService.setSourceOverrides({});
-						
 						const sourceResources = await resourceService.discoverResources(repository);
+						// Restore root override so subsequent user runtime discovery (later) uses target workspace
+						resourceService.setRootCatalogOverride(prevRoot);
+
+						// On first loop, add user/runtime resources (those with origin 'user') once
+						if(!addedUserRuntime){
+							for(const r of sourceResources){ if(r.origin === 'user') catalogOnly.push(r); }
+							addedUserRuntime = true; // Prevent duplication across catalogs
+						}
+						// Always add catalog / remote resources (non-user)
+						const pureCatalog = sourceResources.filter(r => r.origin !== 'user');
 						
 						// Use custom display name or fall back to directory basename
 						const catalogName = getCatalogDisplayName(directory, catalogDirectories);
-						sourceResources.forEach(r => {
+						pureCatalog.forEach(r => {
 							r.catalogName = catalogName;
 							// Ensure unique IDs across catalogs
 							r.id = `${repository.name}:${catalogName}:${r.relativePath}`;
 						});
-						
-						allResources.push(...sourceResources);
+						catalogOnly.push(...pureCatalog);
 					} catch (e: any) {
 						await log(`Failed to load catalog directory "${directory}": ${e?.message || e}`);
 					}
 				}
+				// Merge catalog resources with (single) user runtime resources
+				allResources.push(...catalogOnly);
 			} else {
 				// Fall back to default catalog discovery
 				const resources = await resourceService.discoverResources(repository);
@@ -200,6 +239,31 @@ export async function activate(context: vscode.ExtensionContext) {
 
 		async function loadResources() {
 			allResources = currentRepo ? await discoverMultipleCatalogs(currentRepo) : [];
+
+			// Collapse duplicate entries (catalog + user runtime copy) by hiding the user-origin entry
+			// when a catalog/remote resource with the same category + basename is ACTIVE or MODIFIED.
+			// Rationale: users expect to see the catalog asset itself (with checkmark) rather than a
+			// synthetic "user" row for activated catalog resources. True user-only assets (no catalog
+			// source) must continue to appear.
+			try {
+				const activeCatalogKeys = new Set<string>();
+				for(const r of allResources){
+					if((r as any).origin !== 'user' && (r.state === ResourceState.ACTIVE || r.state === ResourceState.MODIFIED)){
+						const key = r.category + '::' + path.basename(r.relativePath).toLowerCase();
+						activeCatalogKeys.add(key);
+					}
+				}
+				if(activeCatalogKeys.size){
+					allResources = allResources.filter(r => {
+						if((r as any).origin === 'user'){
+							const key = r.category + '::' + path.basename(r.relativePath).toLowerCase();
+							// Hide the user entry if there is an active catalog counterpart
+							if(activeCatalogKeys.has(key)) return false;
+						}
+						return true; // keep catalog + remote + unmatched user assets
+					});
+				}
+			} catch { /* best-effort duplicate collapse */ }
 			
 			// Apply current filter
 			const filteredResources = catalogFilter ? 
@@ -835,6 +899,11 @@ export async function activate(context: vscode.ExtensionContext) {
 			} else if (needsRefresh) {
 				const cfg = vscode.workspace.getConfiguration();
 				resourceService.setTargetWorkspaceOverride(cfg.get<string>('copilotCatalog.targetWorkspace'));
+				// Update current workspace root in case it changed
+				const currentWorkspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+				if (currentWorkspaceRoot) {
+					resourceService.setCurrentWorkspaceRoot(currentWorkspaceRoot);
+				}
 				resourceService.setRuntimeDirectoryName(cfg.get<string>('copilotCatalog.runtimeDirectory', '.github'));
 				resourceService.setRemoteCacheTtl(cfg.get<number>('copilotCatalog.remoteCacheTtlSeconds', 300));
 				await log('Configuration change: directories updated, refreshing...');
