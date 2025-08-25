@@ -6,14 +6,15 @@ async function run() {
   
   // Test 1: Traditional structure (repo/copilot_catalog)
   logTestSection(1, 'Traditional structure');
+  const traditionalCatalogPath = '/workspace/my-project/copilot_catalog';
   const traditional = mockDiscoverRepositories({
-    '/workspace/my-project/copilot_catalog': 'My Project Catalog'
+    [traditionalCatalogPath]: 'My Project Catalog'
   });
   const traditionalRepo = traditional[0];
   
-  assertPathEquals(traditionalRepo.rootPath, '/workspace/my-project', 'Traditional repo rootPath');
-  assertPathEquals(traditionalRepo.catalogPath, '/workspace/my-project/copilot_catalog', 'Traditional repo catalogPath');
-  assertPathEquals(traditionalRepo.runtimePath, '/workspace/my-project/.github', 'Traditional repo runtimePath');
+  assertPathEquals(traditionalRepo.rootPath, path.dirname(path.resolve(traditionalCatalogPath)), 'Traditional repo rootPath');
+  assertPathEquals(traditionalRepo.catalogPath, path.resolve(traditionalCatalogPath), 'Traditional repo catalogPath');
+  assertPathEquals(traditionalRepo.runtimePath, path.join(path.dirname(path.resolve(traditionalCatalogPath)), '.github'), 'Traditional repo runtimePath');
   
   // Test 2: Direct catalog directory (catalog directory as repo root)
   logTestSection(2, 'Direct catalog directory (actual user scenario)');
@@ -83,22 +84,24 @@ async function run() {
   
   // Test 4: Custom runtime directory
   logTestSection(4, 'Custom runtime directory');
+  const customCatalogPath = '/workspace/project/copilot_catalog';
   const customRuntime = mockDiscoverRepositories({
-    '/workspace/project/copilot_catalog': 'Custom Runtime'
+    [customCatalogPath]: 'Custom Runtime'
   }, '.copilot');
   const customRepo = customRuntime[0];
   
-  assertPathEquals(customRepo.runtimePath, '/workspace/project/.copilot', 'Custom runtime directory path');
+  assertPathEquals(customRepo.runtimePath, path.join(path.dirname(path.resolve(customCatalogPath)), '.copilot'), 'Custom runtime directory path');
   
   // Test 5: Edge case - catalog named 'copilot_catalog' but in direct mode
   logTestSection(5, 'Edge case handling');
+  const edgeCatalogPath = '/direct/copilot_catalog';
   const edgeCase = mockDiscoverRepositories({
-    '/direct/copilot_catalog': 'Edge Case'
+    [edgeCatalogPath]: 'Edge Case'
   });
   const edgeRepo = edgeCase[0];
   
   // Should treat parent as repo root since basename is 'copilot_catalog'
-  assertPathEquals(edgeRepo.rootPath, '/direct', 'Edge case rootPath (parent of copilot_catalog)');
+  assertPathEquals(edgeRepo.rootPath, path.dirname(path.resolve(edgeCatalogPath)), 'Edge case rootPath (parent of copilot_catalog)');
   
   console.log('🎉 All repository discovery tests passed!');
 }
