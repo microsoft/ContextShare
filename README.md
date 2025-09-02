@@ -3,6 +3,7 @@
 <!-- Optional CI badge (update with your repository if/when CI is set up) -->
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/jonathan-nafta.contexthub)](https://marketplace.visualstudio.com/items?itemName=jonathan-nafta.contexthub)
+[![Security Policy](https://img.shields.io/badge/Security-Policy-blue.svg)](./SECURITY.md)
 
 A Visual Studio Code extension that enables teams to manage and share AI assistant catalog resources (chat modes, instructions, prompts, tasks, and MCP servers) across multiple repositories inside VS Code.
 
