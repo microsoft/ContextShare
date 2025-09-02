@@ -2,7 +2,7 @@
   "name": "contexthub",
   "displayName": "ContextHub",
   "description": "Manage AI assistant catalog resources (chat modes, instructions, prompts, tasks, MCP) across multiple repositories inside VS Code.",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "publisher": "jonathan-nafta",
   "engines": {
     "vscode": "^1.90.0"

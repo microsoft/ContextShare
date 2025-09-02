@@ -22,17 +22,22 @@ A Visual Studio Code extension that enables teams to manage and share AI assista
 
 ## 🚀 Quick Start
 
+<img src="resources/ext-screenshot.png" alt="ContextHub extension screenshot" align="right" width="320" style="margin:0 0 12px 16px;" />
+
 ### Installation
 
-1. Install from VS Code Marketplace: [ContextHub](https://marketplace.visualstudio.com/items?itemName=jonathan-nafta.contexthub)
-2. Or install from VSIX: `code --install-extension contexthub-x.x.x.vsix`
+Install from VS Code Marketplace: [ContextHub](https://marketplace.visualstudio.com/items?itemName=jonathan-nafta.contexthub)
 
 ### Basic Usage
 
-1. **Open the ContextHub view** in the VS Code Activity Bar
-2. **Create a template catalog**: Click the Dev menu → "Create Template Catalog"
-3. **Activate resources**: Right-click any resource and select "Activate"
-4. **Apply presets**: Use the Hats menu to apply predefined resource combinations
+1. **Open the ContextHub view** in the VS Code Activity Bar.
+2. **Add a catalog directory**:
+    - Click the Options menu → **Add Catalog Directory...** (recommended), OR
+    - Open the Dev menu → **Open Settings** and add paths under the `contexthub.catalogs` setting.
+3. *(Optional)* **Create a template catalog**: Dev menu → **Create Template Catalog** (helpful if you don't already have a catalog).
+4. **Activate resources**: Right-click any resource and choose **Activate**.
+5. **Apply presets (Hats)**: Use the Hats menu to apply saved resource combinations.
+6. *(Optional)* Repeat step 2 to add multiple catalogs (local folders or remote URLs) for aggregation.
 
 ### Example Catalog Structure
 
@@ -67,7 +72,8 @@ example-catalog/
 - VS Code 1.90.0+
 - TypeScript 5.4+
 
-### Building from Source
+<!--
+### Building from Source (Hidden)
 ```bash
 git clone <your-fork-or-repo-url>.git contexthub
 cd contexthub
@@ -76,7 +82,7 @@ npm run build
 npm test
 ```
 
-### Version & Packaging
+### Version & Packaging (Hidden)
 We rely on the official VS Code packaging tool now. The manual build scripts were removed.
 
 ```bash
@@ -96,7 +102,7 @@ Notes:
 - Only edit `package.json` for version changes (Identity version auto-handled by vsce).
 - Avoid committing generated `.vsix` files unless needed for distribution outside Marketplace.
 
-### Development Workflow
+### Development Workflow (Hidden)
 
 1. **Follow TDD**: Write failing tests first, then implement features
 2. **Version Management**: Update `package.json` version and sync with `vsix/extension.vsixmanifest`
@@ -104,6 +110,7 @@ Notes:
 4. **Documentation**: Update CHANGELOG.md for each release
 
 For detailed development guidelines, add internal docs or instructions as needed for your fork.
+-->
 
 ## 🤝 Contributing
 
