@@ -1,8 +1,8 @@
 # ContextHub (VS Code Extension)
 
-[![Build Status](https://github.com/microsoft/vscode-contexthub/actions/workflows/ci.yml/badge.svg)](https://github.com/microsoft/vscode-contexthub/actions/workflows/ci.yml)
+<!-- Optional CI badge (update with your repository if/when CI is set up) -->
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/JonathanN.contexthub)](https://marketplace.visualstudio.com/items?itemName=JonathanN.contexthub)
+[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/jonathan-nafta.contexthub)](https://marketplace.visualstudio.com/items?itemName=jonathan-nafta.contexthub)
 
 A Visual Studio Code extension that enables teams to manage and share AI assistant catalog resources (chat modes, instructions, prompts, tasks, and MCP servers) across multiple repositories inside VS Code.
 
@@ -23,7 +23,7 @@ A Visual Studio Code extension that enables teams to manage and share AI assista
 
 ### Installation
 
-1. Install from VS Code Marketplace: [ContextHub](https://marketplace.visualstudio.com/items?itemName=JonathanN.contexthub)
+1. Install from VS Code Marketplace: [ContextHub](https://marketplace.visualstudio.com/items?itemName=jonathan-nafta.contexthub)
 2. Or install from VSIX: `code --install-extension contexthub-x.x.x.vsix`
 
 ### Basic Usage
@@ -68,8 +68,8 @@ example-catalog/
 
 ### Building from Source
 ```bash
-git clone https://github.com/microsoft/vscode-contexthub.git
-cd vscode-contexthub
+git clone <your-fork-or-repo-url>.git contexthub
+cd contexthub
 npm install
 npm run build
 npm test
@@ -102,7 +102,7 @@ Notes:
 3. **Testing**: Ensure all tests pass before packaging
 4. **Documentation**: Update CHANGELOG.md for each release
 
-For detailed development guidelines, see our [Development Instructions](./.github/instructions/development.instructions.md).
+For detailed development guidelines, add internal docs or instructions as needed for your fork.
 
 ## 🤝 Contributing
 
@@ -125,7 +125,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🔒 Security
 
-Microsoft takes the security of our software products and services seriously. If you believe you have found a security vulnerability, please report it to us as described in our [Security Policy](SECURITY.md).
+If you discover a security issue, please do NOT open a public issue immediately. Instead:
+1. Reproduce and collect minimal details.
+2. Contact the maintainer privately (e.g. via the email listed in the repository profile) OR temporarily make a private draft issue.
+3. After a fix is prepared and released, disclosure can be coordinated.
 
 ## 📞 Support
 
@@ -142,26 +145,13 @@ We use [Semantic Versioning](https://semver.org/) for release management:
 
 - Thanks to the VS Code extension development community
 - Inspired by the need for better AI assistant resource management
-- Built with ❤️ by the Microsoft team
+- Built with ❤️ by independent contributors
 
-## Contributing
+## Code of Conduct
 
-This project welcomes contributions and suggestions.  Most contributions require you to agree to a
-Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us
-the rights to use your contribution. For details, visit [Contributor License Agreements](https://cla.opensource.microsoft.com).
-
-When you submit a pull request, a CLA bot will automatically determine whether you need to provide
-a CLA and decorate the PR appropriately (e.g., status check, comment). Simply follow the instructions
-provided by the bot. You will only need to do this once across all repos using our CLA.
-
-This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
-For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
-contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
+Please adopt a standard open-source code of conduct (e.g. Contributor Covenant) for community interactions. If one is added, reference it here.
 
 ## Trademarks
 
-This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft
-trademarks or logos is subject to and must follow
-[Microsoft's Trademark & Brand Guidelines](https://www.microsoft.com/legal/intellectualproperty/trademarks/usage/general).
-Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship.
-Any use of third-party trademarks or logos are subject to those third-party's policies.
+All product names, logos, and brands are property of their respective owners. Use of any third-party trademarks or logos does not imply endorsement.
+

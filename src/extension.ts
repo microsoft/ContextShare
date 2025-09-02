@@ -1,4 +1,5 @@
 /// <reference path="./shims-node.d.ts" />
+import * as os from 'os';
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
@@ -178,11 +179,49 @@ export async function activate(context: vscode.ExtensionContext) {
 		// Configure logging destination
 		enableFileLogging = !!config.get<boolean>('copilotCatalog.enableFileLogging', false);
 		logFilePath = path.join(context.globalStorageUri.fsPath, LOG_FILENAME);
-	// Respect target workspace override on startup (expand ${workspaceFolder} tokens)
-	const rawTargetWs = config.get<string>('copilotCatalog.targetWorkspace');
-	const resolvedTargetWs = resolveWorkspacePath(rawTargetWs);
-	resourceService.setTargetWorkspaceOverride(resolvedTargetWs);
-	await log(`Resolved targetWorkspace: raw=${rawTargetWs || '(none)'} -> ${resolvedTargetWs || '(none)'} `);
+
+		// In development (extension debugging) automatically create a temporary external workspace
+		// if the user has not specified a targetWorkspace. This makes F5 debugging easier by
+		// providing a clean sandbox separate from the extension source repository.
+		let rawTargetWs = config.get<string>('copilotCatalog.targetWorkspace');
+		if(!rawTargetWs && context.extensionMode === vscode.ExtensionMode.Development){
+			try {
+				const dummyRoot = path.join(os.tmpdir(), 'contexthub-dummy-workspace');
+				await fs.mkdir(dummyRoot, { recursive: true });
+				// Seed a README so folder isn't empty
+				const readmePath = path.join(dummyRoot, 'README_ContextHub_Dummy.md');
+				try { await fs.access(readmePath); } catch { await fs.writeFile(readmePath, '# ContextHub Dummy Workspace\nAutomatically created for extension debugging.'); }
+				// Ensure .vscode exists for potential settings the user might add
+				await fs.mkdir(path.join(dummyRoot, '.vscode'), { recursive: true });
+				// Point targetWorkspace to this dummy root (workspace-scoped so it does not leak globally)
+				await config.update('copilotCatalog.targetWorkspace', dummyRoot, vscode.ConfigurationTarget.Workspace);
+				rawTargetWs = dummyRoot;
+				// Add it to the current (development host) workspace folders if not already present
+				if(!(vscode.workspace.workspaceFolders||[]).some(f => f.uri.fsPath === dummyRoot)){
+					vscode.workspace.updateWorkspaceFolders((vscode.workspace.workspaceFolders||[]).length, 0, { uri: vscode.Uri.file(dummyRoot), name: 'DummyWorkspace' });
+				}
+				// If no catalog directories are configured, map the extension example-catalog for convenience
+				const currentCatalogDirs = config.get<Record<string,string>>('copilotCatalog.catalogDirectory', {});
+				if(Object.keys(currentCatalogDirs).length === 0){
+					const wsRoot = vscode.workspace.workspaceFolders?.find(f => /vscode-copilot-catalog-manager/i.test(f.name || path.basename(f.uri.fsPath)))?.uri.fsPath
+						|| vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+					if(wsRoot){
+						const exampleCatalog = path.join(wsRoot, 'example-catalog');
+						try {
+							await vscode.workspace.fs.stat(vscode.Uri.file(exampleCatalog));
+							await config.update('copilotCatalog.catalogDirectory', { [exampleCatalog]: 'ExampleCatalog' }, vscode.ConfigurationTarget.Workspace);
+						} catch { /* ignore missing example catalog */ }
+					}
+				}
+				vscode.window.showInformationMessage(`ContextHub: Created dummy target workspace at ${dummyRoot}`);
+			} catch(e:any){
+				await log('Auto dummy workspace creation failed: ' + (e?.message || e));
+			}
+		}
+		// Respect target workspace override on startup (expand ${workspaceFolder} tokens)
+		const resolvedTargetWs = resolveWorkspacePath(rawTargetWs);
+		resourceService.setTargetWorkspaceOverride(resolvedTargetWs);
+		await log(`Resolved targetWorkspace: raw=${rawTargetWs || '(none)'} -> ${resolvedTargetWs || '(none)'} `);
 		// Set current workspace root as fallback for target workspace
 		const currentWorkspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 		if (currentWorkspaceRoot) {
@@ -763,9 +802,32 @@ export async function activate(context: vscode.ExtensionContext) {
 					const currentCatalogDirectories = cfg.get<Record<string, string>>('copilotCatalog.catalogDirectory', {});
 					if (!currentCatalogDirectories.hasOwnProperty(val)) {
 						const newCatalogDirectories = {...currentCatalogDirectories, [val]: ''};
-						const targetWorkspaceUri = vscode.workspace.workspaceFolders?.find((f: vscode.WorkspaceFolder) => val!.startsWith(f.uri.fsPath))?.uri;
-						await cfg.update('copilotCatalog.catalogDirectory', newCatalogDirectories, targetWorkspaceUri ? vscode.ConfigurationTarget.WorkspaceFolder : vscode.ConfigurationTarget.Workspace);
-						vscode.window.showInformationMessage(`Added catalog directory: ${val}`);
+						// Determine if the directory belongs to an existing workspace folder (case-insensitive on Windows)
+						const targetWorkspaceFolder = vscode.workspace.workspaceFolders?.find((f: vscode.WorkspaceFolder) => {
+							try {
+								const a = f.uri.fsPath.replace(/\\/g,'/');
+								const b = val!.replace(/\\/g,'/');
+								if(process.platform === 'win32') return b.toLowerCase().startsWith(a.toLowerCase());
+								return b.startsWith(a);
+							} catch { return false; }
+						});
+						const singleRoot = (vscode.workspace.workspaceFolders?.length || 0) === 1;
+						// Force direct write to settings.json to bypass API error ("no resource provided")
+						try {
+							const wsRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+							if(!wsRoot){ vscode.window.showErrorMessage('No workspace folder open.'); return; }
+							const settingsPath = path.join(wsRoot, '.vscode', 'settings.json');
+							await fs.mkdir(path.dirname(settingsPath), { recursive: true });
+							let json: any = {};
+							try { json = JSON.parse(await fs.readFile(settingsPath,'utf8')); } catch { /* create new */ }
+							json['copilotCatalog.catalogDirectory'] = newCatalogDirectories;
+							await fs.writeFile(settingsPath, JSON.stringify(json,null,2));
+							await log(`addDirectory(dev): wrote settings.json directly (${Object.keys(newCatalogDirectories).length} entries)`);
+							vscode.window.showInformationMessage(`Added catalog directory: ${val}`);
+						} catch(e:any){
+							await log('addDirectory(dev): direct settings.json write failed: ' + getErrorMessage(e));
+							vscode.window.showErrorMessage('Failed to write settings.json for catalog directory. See log.');
+						}
 					} else {
 						vscode.window.showInformationMessage(`Directory already configured: ${val}`);
 					}
@@ -782,8 +844,36 @@ export async function activate(context: vscode.ExtensionContext) {
 						if(manual === undefined) return; // cancelled
 						val = manual.trim();
 					}
-					const targetWorkspaceUri = vscode.workspace.workspaceFolders?.find((f: vscode.WorkspaceFolder) => f.uri.fsPath === val)?.uri;
-					await cfg.update('copilotCatalog.targetWorkspace', val, targetWorkspaceUri ? vscode.ConfigurationTarget.WorkspaceFolder : vscode.ConfigurationTarget.Workspace);
+					// If the provided path exactly matches a workspace folder, scope the setting to that folder
+					const targetWorkspaceFolder = val ? vscode.workspace.workspaceFolders?.find((f: vscode.WorkspaceFolder) => {
+						if(process.platform === 'win32') return f.uri.fsPath.toLowerCase() === val!.toLowerCase();
+						return f.uri.fsPath === val;
+					}) : undefined;
+					const singleRoot = (vscode.workspace.workspaceFolders?.length || 0) === 1;
+					let updated = false;
+					try {
+						await log(`setTarget(dev): attempting update path=${val||'(clear)'} singleRoot=${singleRoot} folderMatch=${!!targetWorkspaceFolder}`);
+						if(targetWorkspaceFolder && !singleRoot){
+							await vscode.workspace.getConfiguration(undefined, targetWorkspaceFolder.uri)
+								.update('copilotCatalog.targetWorkspace', val, vscode.ConfigurationTarget.WorkspaceFolder);
+							updated = true;
+						} else {
+							await cfg.update('copilotCatalog.targetWorkspace', val, vscode.ConfigurationTarget.Workspace);
+							updated = true;
+						}
+					} catch(e:any){
+						await log('setTarget(dev): primary update failed: ' + getErrorMessage(e));
+						if(!updated){
+							try {
+								await cfg.update('copilotCatalog.targetWorkspace', val, vscode.ConfigurationTarget.Workspace);
+								updated = true;
+								await log('setTarget(dev): fallback workspace update succeeded');
+							} catch(e2:any){ await log('setTarget(dev): fallback workspace update failed: ' + getErrorMessage(e2)); }
+						}
+					}
+					if(!updated){
+						vscode.window.showErrorMessage('Failed to update target workspace setting.');
+					}
 				}
 				await refresh();
 			})
@@ -948,9 +1038,37 @@ export async function activate(context: vscode.ExtensionContext) {
 				// Optional display name
 				const displayName = await vscode.window.showInputBox({ prompt: 'Optional display name for this catalog (shown in the tree)', placeHolder: 'Leave blank to use folder name' });
 				const newMap = { ...current, [selectedPath]: displayName ?? current[selectedPath] ?? '' } as Record<string,string>;
-				const scope = wsFolders.find(f => selectedPath!.startsWith(f.uri.fsPath)) ? vscode.ConfigurationTarget.WorkspaceFolder : vscode.ConfigurationTarget.Workspace;
-				await cfg.update('copilotCatalog.catalogDirectory', newMap, scope);
-				vscode.window.showInformationMessage(`Added catalog directory: ${selectedPath}`);
+				// Determine owning workspace folder (case-insensitive on Windows) for proper scoping
+				const owningFolder = wsFolders.find(f => {
+					try {
+						const a = f.uri.fsPath.replace(/\\/g,'/');
+						const b = selectedPath!.replace(/\\/g,'/');
+						if(process.platform === 'win32') return b.toLowerCase().startsWith(a.toLowerCase());
+						return b.startsWith(a);
+					} catch { return false; }
+				});
+				try {
+					if(owningFolder){
+						await vscode.workspace.getConfiguration(undefined, owningFolder.uri)
+							.update('copilotCatalog.catalogDirectory', newMap, vscode.ConfigurationTarget.WorkspaceFolder);
+					} else {
+						await cfg.update('copilotCatalog.catalogDirectory', newMap, vscode.ConfigurationTarget.Workspace);
+					}
+					vscode.window.showInformationMessage(`Added catalog directory: ${selectedPath}`);
+				} catch(e:any){
+					await log('addCatalogDirectory: failed to write settings via API: ' + getErrorMessage(e));
+					vscode.window.showErrorMessage('Failed to update settings automatically. Opening settings.json for manual edit.');
+					// Fallback: open settings.json so user can manually edit
+					const fallbackFolder = owningFolder || wsFolders[0];
+					if(fallbackFolder){
+						try {
+							const settingsPath = path.join(fallbackFolder.uri.fsPath, '.vscode', 'settings.json');
+							await fs.mkdir(path.dirname(settingsPath), { recursive: true });
+							if(!(await fileService.pathExists(settingsPath))){ await fs.writeFile(settingsPath, JSON.stringify({ 'copilotCatalog.catalogDirectory': newMap }, null, 2)); }
+							vscode.window.showTextDocument(vscode.Uri.file(settingsPath));
+						} catch(err:any){ await log('addCatalogDirectory: fallback open settings.json failed: ' + getErrorMessage(err)); }
+					}
+				}
 				await refresh();
 			})
 		);

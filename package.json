@@ -2,8 +2,8 @@
   "name": "contexthub",
   "displayName": "ContextHub",
   "description": "Manage AI assistant catalog resources (chat modes, instructions, prompts, tasks, MCP) across multiple repositories inside VS Code.",
-  "version": "0.3.0",
-  "publisher": "JonathanN",
+  "version": "0.3.1",
+  "publisher": "jonathan-nafta",
   "engines": {
     "vscode": "^1.90.0"
   },
@@ -249,6 +249,11 @@
         "command": "copilotCatalog.dev.createTemplateCatalog",
         "title": "ContextHub (Dev): Create Template Catalog",
         "icon": "$(new-folder)"
+      },
+      {
+        "command": "copilotCatalog.dev.configureSettings",
+        "title": "ContextHub (Dev): Configure Settings",
+        "icon": "$(gear)"
       },
       {
         "command": "copilotCatalog.addCatalogDirectory",
