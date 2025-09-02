@@ -1,11 +1,25 @@
-# Include only runtime necessities by excluding dev and docs
+###############################################
+# VSIX CONTENT MINIMIZATION                    #
+# Goal: Ship ONLY what is required for the     #
+# extension to run in VS Code.                 #
+# Included (whitelisted):                      #
+#  - package.json (extension manifest)         #
+#  - dist/extension.js (bundled code)          #
+#  - resources/**/* (icons referenced)         #
+#  - README.md (marketplace listing)           #
+#  - LICENSE*  (legal)                         #
+# Everything else excluded.                    #
+###############################################
+
+# 1. Exclude broad development artifacts
 src/
 test/
-**/*.test.*
-.github/
-.vscode/
-.gitignore
-.gitattributes
+dist/**
+!dist/extension.js
+
+# 2. Exclude documentation & misc (non-runtime)
+CHANGELOG.md
+SECURITY.md
 SOFTWARE_ARCHITECTURE_SPECIFICATION.md
 TESTPLAN.md
 SETUP_GUIDE.md
@@ -13,20 +27,37 @@ SUPPORT.md
 WELCOME.md
 CATALOG_DISPLAY_NAMES_EXAMPLE.md
 duplicate-remove-work-item.md
+hackathon--*.md
 example-catalog/
 scripts/
 debug-*.js
-*.vsix
+
+# 3. Exclude build & packaging helpers
 build/
-dist/test/
+vsix/
 build_vsix.ps1
 build_vsix.sh
-vsix/
-**/*.map
+*.vsix
+
+# 4. Exclude config & source artifacts not needed at runtime
+tsconfig.json
 **/*.ts
 **/*.tsbuildinfo
+**/*.map
 **/*.log
+.github/
+.vscode/
+.gitignore
+.gitattributes
 dev-sandbox/
 node_modules/
-!dist/**
+
+# 5. Re-include required assets (order matters)
+!package.json
+!README.md
+!LICENSE*
+!resources/
 !resources/**
+# (Already included above) !dist/extension.js
+
+# (Intentionally allow .vscodeignore to be excluded from packaged VSIX)
