@@ -20,7 +20,7 @@ const testCases: TestCase[] = [
   
   // Instruction files
   { filename: 'system.instructions.md', category: ResourceCategory.INSTRUCTIONS, expected: 'system' },
-  { filename: 'setup.instruction.md', category: ResourceCategory.INSTRUCTIONS, expected: 'setup' },
+  { filename: 'setup.instructions.md', category: ResourceCategory.INSTRUCTIONS, expected: 'setup' },
   
   // Prompt files
   { filename: 'init.prompt.md', category: ResourceCategory.PROMPTS, expected: 'init' },

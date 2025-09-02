@@ -12,8 +12,8 @@ function repoFor(root: string): Repository {
   const root = path.resolve('/ws');
   const files: Record<string,string> = {
     [path.join(root, 'copilot_catalog', 'chatmodes', 'a.chatmode.md')]: 'A',
-    [path.join(root, 'copilot_catalog', 'instructions', 'b.instruction.md')]: 'B',
-    [path.join(root, 'copilot_catalog', 'hats', 'ab.json')]: JSON.stringify({ name: 'AB', resources: [ 'chatmodes/a.chatmode.md', 'instructions/b.instruction.md' ]}, null, 2)
+  [path.join(root, 'copilot_catalog', 'instructions', 'b.instructions.md')]: 'B',
+  [path.join(root, 'copilot_catalog', 'hats', 'ab.json')]: JSON.stringify({ name: 'AB', resources: [ 'chatmodes/a.chatmode.md', 'instructions/b.instructions.md' ]}, null, 2)
   };
   const fs = new MockFileService(files);
   const rs = new ResourceService(fs);

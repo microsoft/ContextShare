@@ -2,7 +2,7 @@
   "name": "copilot-catalog-manager",
   "displayName": "Copilot Catalog Manager",
   "description": "Manage AI assistant catalog resources (chat modes, instructions, prompts, tasks, MCP) across multiple repositories inside VS Code.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publisher": "microsoft",
   "engines": {
     "vscode": "^1.90.0"
@@ -161,6 +161,12 @@
           "when": "copilotCatalog.hasResources"
         },
         {
+          "id": "copilotCatalogOptions",
+          "name": "Options",
+          "icon": "$(gear)",
+          "when": "copilotCatalog.hasResources"
+        },
+        {
           "id": "copilotCatalogOverview",
           "name": "Overview",
           "icon": "$(home)",
@@ -173,6 +179,11 @@
         "command": "copilotCatalog.refresh",
         "title": "Copilot Catalog: Refresh",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "copilotCatalog.openSettings",
+        "title": "Copilot Catalog: Open Settings",
+        "icon": "$(gear)"
       },
       {
         "command": "copilotCatalog.activate",
@@ -244,6 +255,11 @@
         "command": "copilotCatalog.dev.configureSettings",
         "title": "Copilot Catalog (Dev): Configure Source/Target Settings",
         "icon": "$(gear)"
+      },
+      {
+        "command": "copilotCatalog.addCatalogDirectory",
+        "title": "Copilot Catalog: Add Catalog Directory…",
+        "icon": "$(folder-opened)"
       },
       {
         "command": "copilotCatalog.filterCatalog",
@@ -320,23 +336,8 @@
       "view/title": [
         {
           "command": "copilotCatalog.refresh",
-          "when": "view == copilotCatalogOverview || view == copilotCatalogChatmodes",
+          "when": "view =~ /copilotCatalog.*/",
           "group": "navigation"
-        },
-        {
-          "command": "copilotCatalog.filterCatalog",
-          "when": "view == copilotCatalogOverview || view == copilotCatalogChatmodes",
-          "group": "navigation@0"
-        },
-        {
-          "submenu": "copilotCatalog.hatsMenu",
-          "when": "view == copilotCatalogOverview || view == copilotCatalogChatmodes",
-          "group": "navigation@1"
-        },
-        {
-          "submenu": "copilotCatalog.devMenu",
-          "when": "view == copilotCatalogOverview || view == copilotCatalogChatmodes",
-          "group": "navigation@9"
         }
       ],
       "copilotCatalog.hatsMenu": [
@@ -363,9 +364,19 @@
       ],
       "copilotCatalog.devMenu": [
         {
+          "command": "copilotCatalog.openSettings",
+          "when": "view =~ /copilotCatalog.*/",
+          "group": "0"
+        },
+        {
           "command": "copilotCatalog.dev.createTemplateCatalog",
           "when": "view == copilotCatalogOverview || view == copilotCatalogChatmodes",
           "group": "1"
+        },
+        {
+          "command": "copilotCatalog.addCatalogDirectory",
+          "when": "view =~ /copilotCatalog.*/",
+          "group": "1@b"
         },
         {
           "command": "copilotCatalog.dev.configureSettings",
@@ -389,7 +400,7 @@
     "build": "tsc -p .",
     "watch": "tsc -w -p .",
     "package": "echo 'vsce not installed in offline env'",
-  "verify:version": "node scripts/verify-version-sync.js",
+    "verify:version": "node scripts/verify-version-sync.js",
     "test": "node dist/test/resourceService.test.js && node dist/test/treeIcons.test.js && node dist/test/naming.test.js && node dist/test/mcpMerge.test.js && node dist/test/hats.test.js && node dist/test/commandsRegistered.test.js && node dist/test/display.test.js && node dist/test/catalogDisplayName.test.js && node dist/test/repositoryDiscovery.test.js && node dist/test/targetPath.test.js && node dist/test/workspaceConfiguration.test.js && node dist/test/resourceActivation.test.js",
     "test:all": "node dist/test/resourceService.test.js && node dist/test/treeIcons.test.js && node dist/test/naming.test.js && node dist/test/mcpMerge.test.js && node dist/test/hats.test.js && node dist/test/commandsRegistered.test.js && node dist/test/display.test.js && node dist/test/catalogDisplayName.test.js && node dist/test/repositoryDiscovery.test.js && node dist/test/targetPath.test.js && node dist/test/workspaceConfiguration.test.js && node dist/test/resourceActivation.test.js",
     "test:edge-cases": "node dist/test/repositoryDiscovery.test.js && node dist/test/targetPath.test.js && node dist/test/workspaceConfiguration.test.js && node dist/test/resourceActivation.test.js",

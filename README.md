@@ -41,7 +41,7 @@ example-catalog/
 ├── chatmodes/
 │   └── developer-assistant.chatmode.md
 ├── instructions/
-│   └── code-review-guidelines.instruction.md
+│   └── code-review-guidelines.instructions.md
 ├── prompts/
 │   └── bug-analysis.prompt.md
 ├── tasks/

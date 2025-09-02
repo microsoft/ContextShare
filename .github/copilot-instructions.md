@@ -28,7 +28,7 @@ User Actions → Commands → Service Methods → File Operations → State Upda
 
 ### Resource Discovery Algorithm
 1. **Root Override Priority**: When `rootCatalogOverride` is set, it takes precedence over per-category overrides
-2. **Filename-Based Classification**: Uses `inferCategoryFromFilename()` for recursive discovery (`.chatmode.md`, `.instruction.md`, etc.)
+2. **Filename-Based Classification**: Uses `inferCategoryFromFilename()` for recursive discovery (`.chatmode.md`, `.instructions.md`, etc.; legacy `.instruction.md` also supported)
 3. **Remote Sources**: Support HTTPS-only URLs with `index.json` manifest for directories
 4. **User Asset Detection**: Compare runtime vs catalog locations to identify user-created resources
 
@@ -98,7 +98,7 @@ Settings in `package.json` use:
 
 ### Resource Discovery Issues
 1. **Check Override Priority**: Root catalog override trumps per-category settings
-2. **Filename Conventions**: Verify `.chatmode.md`, `.instruction.md`, `.prompt.md`, `.task.json`, `.mcp.json`
+2. **Filename Conventions**: Verify `.chatmode.md`, `.instructions.md` (preferred), `.prompt.md`, `.task.json`, `.mcp.json`
 3. **Path Resolution**: Use VS Code output channel for resource discovery logging
 
 ### MCP Merge Failures  

@@ -123,7 +123,7 @@ Access settings via: **File** → **Preferences** → **Settings** → Search "C
 
 2. **Add your first resource** (example instruction):
    ```markdown
-   # File: copilot_catalog/instructions/coding-standards.instructions.md
+  # File: copilot_catalog/instructions/coding-standards.instructions.md
    ---
    applyTo: '**/*.js,**/*.ts'
    ---
@@ -181,7 +181,7 @@ Workspace hats are saved to `.vscode/copilot-hats.json`:
       "name": "Code Review Setup",
       "description": "Resources for thorough code reviews",
       "resources": [
-        "instructions/code-review-checklist.instructions.md",
+  "instructions/code-review-checklist.instructions.md",
         "prompts/security-review.prompt.md",
         "chatmodes/reviewer.chatmode.md"
       ]
@@ -265,7 +265,7 @@ copilot_catalog/
 
 #### 3. Naming Conventions
 - Use consistent prefixes: `TEAM.`, `PROJECT.`, `ROLE.`
-- Include version info for evolving standards: `coding-standards-v2.instructions.md`
+ - Include version info for evolving standards: `coding-standards-v2.instructions.md`
 - Use descriptive names: `react-component-best-practices.instructions.md`
 
 ### Review Process for Catalog Changes
@@ -273,7 +273,7 @@ copilot_catalog/
 1. **Create PR for catalog changes**:
    ```bash
    git checkout -b improve-coding-standards
-   # Edit copilot_catalog/instructions/coding-standards.instructions.md
+  # Edit copilot_catalog/instructions/coding-standards.instructions.md
    git add copilot_catalog/
    git commit -m "Update coding standards for async/await usage"
    git push origin improve-coding-standards

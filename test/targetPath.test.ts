@@ -71,9 +71,9 @@ async function run() {
   svc3.setCurrentWorkspaceRoot('/workspace/current');
   svc3.setTargetWorkspaceOverride('/explicit/target');
   
-  const instructionResource = createTestResource(traditionalRepo, ResourceCategory.INSTRUCTIONS, 'test.instruction.md');
+  const instructionResource = createTestResource(traditionalRepo, ResourceCategory.INSTRUCTIONS, 'test.instructions.md');
   const targetPath3 = svc3.getTargetPath(instructionResource);
-  const expectedPath3 = '/explicit/target/.github/instructions/test.instruction.md';
+  const expectedPath3 = '/explicit/target/.github/instructions/test.instructions.md';
   
   assertPathEquals(targetPath3, expectedPath3, 'Explicit target workspace override');
   
