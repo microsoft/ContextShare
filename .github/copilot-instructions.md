@@ -1,4 +1,4 @@
-# GitHub Copilot Instructions for VS Code Copilot Catalog Manager
+# GitHub Copilot Instructions for ContextHub
 
 ## Project Overview
 

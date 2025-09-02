@@ -72,9 +72,8 @@ export class OptionsTreeProvider {
         children: [
           { id: 'dev-open-settings', label: 'Open Settings', icon: 'gear', command: 'copilotCatalog.openSettings' },
           { id: 'dev-create-template', label: 'Create Template Catalog', icon: 'new-folder', command: 'copilotCatalog.dev.createTemplateCatalog' },
-          { id: 'dev-add-dir', label: 'Add Catalog Directory…', icon: 'folder-opened', command: 'copilotCatalog.addCatalogDirectory' },
-          { id: 'dev-configure', label: 'Configure Source/Target Settings', icon: 'gear', command: 'copilotCatalog.dev.configureSettings' }
-        ]
+          { id: 'dev-add-dir', label: 'Add Catalog Directory…', icon: 'folder-opened', command: 'copilotCatalog.addCatalogDirectory' }
+                ]
       }
     ];
   }

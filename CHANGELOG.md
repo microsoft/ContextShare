@@ -6,7 +6,7 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 
 ## [Unreleased]
 ### Changed
-- Updated activity bar icon to a catalog book design that better represents the "Copilot Catalog Manager" functionality. The new icon features a book/catalog with organized content lines and a small AI indicator dot.
+- Updated activity bar icon to a catalog book design that better represents the ContextHub functionality. The new icon features a book/catalog with organized content lines and a small AI indicator dot.
 
 ## [0.1.35] - 2025-08-23
 ### Changed

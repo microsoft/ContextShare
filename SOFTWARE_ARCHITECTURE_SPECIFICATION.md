@@ -1,5 +1,5 @@
 # Software Architecture Specification
-## Copilot Catalog Manager VS Code Extension
+## ContextHub VS Code Extension
 
 **Document Version:** 1.0  
 **Last Updated:** August 19, 2025  
@@ -32,7 +32,7 @@
 
 ### 1.1 Purpose
 
-The Copilot Catalog Manager is a Visual Studio Code extension designed to manage AI assistant catalog resources (chat modes, instructions, prompts, tasks, and Model Context Protocol assets) across multiple repositories. The extension provides a centralized interface for discovering, activating, and managing AI resources that enhance developer productivity through GitHub Copilot.
+ContextHub is a Visual Studio Code extension designed to manage AI assistant catalog resources (chat modes, instructions, prompts, tasks, and Model Context Protocol assets) across multiple repositories. The extension provides a centralized interface for discovering, activating, and managing AI resources that enhance developer productivity through GitHub Copilot.
 
 ### 1.2 System Scope
 
@@ -60,7 +60,7 @@ The extension operates within the VS Code ecosystem as a client-side tool that:
 ```mermaid
 graph TB
     subgraph "VS Code Environment"
-        CM[Copilot Catalog Manager]
+  CM[ContextHub]
         GC[GitHub Copilot]
         WS[Workspace]
         UI[VS Code UI]
@@ -508,7 +508,7 @@ private remoteCache: Map<string, {
 
 ```json
 {
-  "activationEvents": ["*"],
+  "activationEvents": ["onStartupFinished"],
   "main": "dist/src/extension.js"
 }
 ```
@@ -1131,7 +1131,7 @@ graph LR
 
 set -e
 
-echo "Building Copilot Catalog Manager VSIX..."
+echo "Building ContextHub VSIX..."
 
 # Clean previous build
 rm -f *.vsix
@@ -1170,9 +1170,9 @@ code --install-extension $LATEST_VSIX --force
 
 ```bash
 # Install development version
-npm install --prefix copilot-catalog-manager-extension/
-bash copilot-catalog-manager-extension/build_vsix.sh
-bash copilot-catalog-manager-extension/install_locally.sh
+npm install --prefix contexthub-extension/
+bash contexthub-extension/build_vsix.sh
+bash contexthub-extension/install_locally.sh
 ```
 
 ### 12.3 Update Management
@@ -1543,4 +1543,4 @@ Enable `copilotCatalog.enableFileLogging` for persistent debug logs.
 
 ---
 
-*This document serves as the definitive architectural reference for the Copilot Catalog Manager VS Code Extension. All development, maintenance, and evolution decisions should align with the principles and patterns described herein.*
+*This document serves as the definitive architectural reference for the ContextHub VS Code Extension. All development, maintenance, and evolution decisions should align with the principles and patterns described herein.*

@@ -1,8 +1,8 @@
-# VS Code Copilot Catalog Manager
+# ContextHub (VS Code Extension)
 
-[![Build Status](https://github.com/microsoft/vscode-copilot-catalog-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/microsoft/vscode-copilot-catalog-manager/actions/workflows/ci.yml)
+[![Build Status](https://github.com/microsoft/vscode-contexthub/actions/workflows/ci.yml/badge.svg)](https://github.com/microsoft/vscode-contexthub/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/microsoft.copilot-catalog-manager)](https://marketplace.visualstudio.com/items?itemName=microsoft.copilot-catalog-manager)
+[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/JonathanN.contexthub)](https://marketplace.visualstudio.com/items?itemName=JonathanN.contexthub)
 
 A Visual Studio Code extension that enables teams to manage and share AI assistant catalog resources (chat modes, instructions, prompts, tasks, and MCP servers) across multiple repositories inside VS Code.
 
@@ -23,16 +23,15 @@ A Visual Studio Code extension that enables teams to manage and share AI assista
 
 ### Installation
 
-1. Install from VS Code Marketplace: [Copilot Catalog Manager](https://marketplace.visualstudio.com/items?itemName=microsoft.copilot-catalog-manager)
-2. Or install from VSIX: `code --install-extension copilot-catalog-manager-x.x.x.vsix`
+1. Install from VS Code Marketplace: [ContextHub](https://marketplace.visualstudio.com/items?itemName=JonathanN.contexthub)
+2. Or install from VSIX: `code --install-extension contexthub-x.x.x.vsix`
 
 ### Basic Usage
 
-1. **Open the Copilot Catalog view** in the VS Code Activity Bar
+1. **Open the ContextHub view** in the VS Code Activity Bar
 2. **Create a template catalog**: Click the Dev menu → "Create Template Catalog"
-3. **Configure catalog sources**: Use Dev menu → "Configure Source/Target Settings"
-4. **Activate resources**: Right-click any resource and select "Activate"
-5. **Apply presets**: Use the Hats menu to apply predefined resource combinations
+3. **Activate resources**: Right-click any resource and select "Activate"
+4. **Apply presets**: Use the Hats menu to apply predefined resource combinations
 
 ### Example Catalog Structure
 
@@ -69,8 +68,8 @@ example-catalog/
 
 ### Building from Source
 ```bash
-git clone https://github.com/microsoft/vscode-copilot-catalog-manager.git
-cd vscode-copilot-catalog-manager
+git clone https://github.com/microsoft/vscode-contexthub.git
+cd vscode-contexthub
 npm install
 npm run build
 npm test
@@ -89,7 +88,7 @@ npm version major
 npx @vscode/vsce package
 
 # Install locally for testing
-code --install-extension copilot-catalog-manager-*.vsix --force
+code --install-extension contexthub-*.vsix --force
 ```
 
 Notes:

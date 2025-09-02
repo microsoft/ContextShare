@@ -6,7 +6,7 @@
 
 ## Overview
 
-This work item addresses code duplication patterns identified across the VS Code Copilot Catalog Manager extension codebase. The duplicates are primarily in test code but impact maintainability and consistency.
+This work item addresses code duplication patterns identified across the ContextHub extension codebase. The duplicates are primarily in test code but impact maintainability and consistency.
 
 ## Current State Analysis
 

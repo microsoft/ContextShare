@@ -1,6 +1,6 @@
-# Welcome to Copilot Catalog Manager! 🎉
+# Welcome to ContextHub! 🎉
 
-Thank you for installing the **Copilot Catalog Manager** extension! You're about to transform how your team manages and shares AI assistant resources in VS Code.
+Thank you for installing **ContextHub**! You're about to transform how your team manages and shares AI assistant resources in VS Code.
 
 ## What You Can Do Now
 
@@ -34,20 +34,20 @@ Thank you for installing the **Copilot Catalog Manager** extension! You're about
 ## Quick Start (2 Minutes)
 
 ### Option 1: Start Fresh 🆕
-1. **Open the Catalog View**: Click the 📚 icon in the Activity Bar (left sidebar)
+1. **Open the ContextHub View**: Click the 📚 icon in the Activity Bar (left sidebar)
 2. **Create Template**: Click **Dev** → **Create Template Catalog** in the title bar
 3. **Explore**: Browse the created `copilot_catalog/` folder with sample resources
 4. **Activate**: Right-click any resource and select "Activate" to try it out
 
 ### Option 2: Use Existing Catalog 📁
-1. **Open the Catalog View**: Click the 📚 icon in the Activity Bar
-2. **Point to Your Catalog**: If you have a catalog elsewhere, go to **Settings** → **Copilot Catalog** → set **Root Catalog Path**
-3. **Refresh**: Click the refresh button in the Catalog view
+1. **Open the ContextHub View**: Click the 📚 icon in the Activity Bar
+2. **Point to Your Catalog**: If you have a catalog elsewhere, go to **Settings** → **ContextHub** → set **Root Catalog Path**
+3. **Refresh**: Click the refresh button in the ContextHub view
 4. **Start Activating**: Right-click resources to activate them
 
 ### Option 3: Team Setup 👥
 1. **Clone a repo** with a `copilot_catalog/` folder
-2. **Open the Catalog View**: Click the 📚 icon in the Activity Bar  
+2. **Open the ContextHub View**: Click the 📚 icon in the Activity Bar  
 3. **Apply Team Preset**: Click **Hats** → **Apply Hat** and choose a team preset
 4. **You're Ready**: All team resources are now active and ready to use
 
@@ -55,13 +55,13 @@ Thank you for installing the **Copilot Catalog Manager** extension! You're about
 
 🎯 **Try Hats**: Save your current setup as a Hat (preset) so you can switch back anytime  
 📖 **Read the Guide**: Check out [SETUP_GUIDE.md](./SETUP_GUIDE.md) for detailed configuration options  
-🔧 **Customize**: Visit **Settings** → **Copilot Catalog** to configure directories and behavior  
+🔧 **Customize**: Visit **Settings** → **ContextHub** to configure directories and behavior  
 
 ## Need Help?
 
-- 📋 **Commands**: Press `Ctrl+Shift+P` and type "Copilot Catalog" to see all available commands
-- ⚙️ **Settings**: Go to **File** → **Preferences** → **Settings** → search "Copilot Catalog"
-- 🐛 **Issues**: Check the Output panel → "Copilot Catalog" for diagnostic information
+- 📋 **Commands**: Press `Ctrl+Shift+P` and type "ContextHub" to see all available commands
+- ⚙️ **Settings**: Go to **File** → **Preferences** → **Settings** → search "ContextHub"
+- 🐛 **Issues**: Check the Output panel → "ContextHub" for diagnostic information
 
 ## Key Concepts
 

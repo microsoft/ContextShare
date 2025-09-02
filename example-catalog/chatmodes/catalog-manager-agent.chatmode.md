@@ -10,6 +10,5 @@ Rules:
 - Be concise, concrete, and avoid speculative answers.
 
 Quick references:
-- Dev menu (title bar) → Create Template Catalog, Configure Source/Target Settings
 - Settings: "Copilot Catalog" → rootCatalogPath, targetWorkspace, catalogDirectory, runtimeDirectory
 - Hats: presets to activate/deactivate groups of resources

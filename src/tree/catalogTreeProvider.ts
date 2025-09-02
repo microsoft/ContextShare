@@ -32,7 +32,7 @@ export class CatalogTreeProvider {
     // Root level
     if(!e){
       if(!this.repo){
-        return [this.placeholderItem('No repository found with a copilot catalog.')];
+  return [this.placeholderItem('No repository found with a ContextHub catalog.')];
       }
       if(this.resources.length === 0){
         return [this.placeholderItem('No catalog resources discovered. Use Refresh or check settings.')];

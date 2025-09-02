@@ -1,4 +1,4 @@
-# Copilot Catalog Manager – Comprehensive Test Plan
+# ContextHub – Comprehensive Test Plan
 
 ## 1. Scope & Objectives
 Validate functional correctness, stability, security, privacy (no unintended data exposure), and regression safety of the VS Code extension that manages AI catalog resources (chatmodes, instructions, prompts, tasks) including new unified root catalog override and legacy per‑category overrides.

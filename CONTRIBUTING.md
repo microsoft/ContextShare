@@ -1,6 +1,6 @@
-# Contributing to VS Code Copilot Catalog Manager
+# Contributing to ContextHub
 
-Thank you for your interest in contributing to the VS Code Copilot Catalog Manager! This document provides guidelines and instructions for contributing to the project.
+Thank you for your interest in contributing to ContextHub! This document provides guidelines and instructions for contributing to the project.
 
 ## 🚀 Getting Started
 
@@ -15,8 +15,8 @@ Thank you for your interest in contributing to the VS Code Copilot Catalog Manag
 
 1. **Fork and Clone**
    ```bash
-   git clone https://github.com/your-username/vscode-copilot-catalog-manager.git
-   cd vscode-copilot-catalog-manager
+   git clone https://github.com/your-username/vscode-contexthub.git
+   cd vscode-contexthub
    ```
 
 2. **Install Dependencies**
@@ -252,4 +252,4 @@ Contributors will be recognized in:
 - GitHub contributors page
 - Special thanks for significant contributions
 
-Thank you for helping make VS Code Copilot Catalog Manager better! 🚀
+Thank you for helping make ContextHub better! 🚀

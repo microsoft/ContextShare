@@ -435,7 +435,7 @@ FodyWeavers.xsd
 *.msm
 *.msp
 
-# Copilot Catalog runtime activated assets (do not commit)
+# ContextHub runtime activated assets (do not commit)
 .github/chatmodes/
 .github/instructions/
 .github/prompts/

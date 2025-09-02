@@ -1,6 +1,6 @@
-# Copilot Catalog Manager - Complete Setup Guide
+# ContextHub - Complete Setup Guide
 
-This guide will walk you through everything you need to know to set up and use the Copilot Catalog Manager extension effectively.
+This guide will walk you through everything you need to know to set up and use the ContextHub extension effectively.
 
 ## Table of Contents
 
@@ -24,25 +24,25 @@ This guide will walk you through everything you need to know to set up and use t
 #### Option 1: From VSIX File (Local Development)
 ```powershell
 # Install the latest version
-code --install-extension ./copilot-catalog-manager-0.1.32.vsix --force
+code --install-extension ./contexthub-0.1.32.vsix --force
 ```
 
 #### Option 2: VS Code Marketplace (Future)
 1. Open VS Code
 2. Go to Extensions (`Ctrl+Shift+X`)
-3. Search for "Copilot Catalog Manager"
+3. Search for "ContextHub"
 4. Click Install
 
 ### First Launch
 1. **Restart VS Code** after installation
 2. **Look for the 📚 icon** in the Activity Bar (left sidebar)
-3. **Click the icon** to open the Copilot Catalog view
+3. **Click the icon** to open the ContextHub view
 
 ## Understanding the Interface
 
 ### Activity Bar Icon 📚
 - Located in the left sidebar
-- Shows status: "Copilot Catalog 📚 X/Y" (X active resources out of Y total)
+- Shows status: "ContextHub 📚 X/Y" (X active resources out of Y total)
 - Click to open the main catalog tree view
 
 ### Tree View
@@ -71,13 +71,12 @@ The main interface showing your catalog structure:
 
 #### Dev Menu 🔧
 - **Create Template Catalog**: Generate sample catalog structure
-- **Configure Source/Target Settings**: Quick access to path configuration
 - **Refresh**: Reload catalog and check for changes
 - **Diagnostics**: Show detailed status and troubleshooting info
 
 ## Configuration Options
 
-Access settings via: **File** → **Preferences** → **Settings** → Search "Copilot Catalog"
+Access settings via: **File** → **Preferences** → **Settings** → Search "ContextHub"
 
 ### Basic Settings
 
@@ -99,7 +98,7 @@ Access settings via: **File** → **Preferences** → **Settings** → Search "C
 ### Method 1: Create Template Catalog (Recommended for New Users)
 
 1. **Open any workspace** in VS Code
-2. **Open Copilot Catalog view** (📚 icon)
+2. **Open ContextHub view** (📚 icon)
 3. **Click Dev → Create Template Catalog** in title bar
 4. **Explore the created structure**:
    ```
@@ -143,7 +142,7 @@ Access settings via: **File** → **Preferences** → **Settings** → Search "C
 
 If you already have a catalog elsewhere:
 
-1. **Open Settings** → Search "Copilot Catalog"
+1. **Open Settings** → Search "ContextHub"
 2. **Set Catalog Directory**: 
    - Key: Path to your catalog (absolute or relative to workspace)
    - Value: Display name (optional)
@@ -225,7 +224,7 @@ Workspace hats are saved to `.vscode/copilot-hats.json`:
    mkdir copilot_catalog
    # Add your team's standard resources
    git add copilot_catalog/
-   git commit -m "Add team Copilot catalog"
+  git commit -m "Add team catalog"
    
    # Create team hats in VS Code and commit
    git add .vscode/copilot-hats.json
@@ -236,7 +235,7 @@ Workspace hats are saved to `.vscode/copilot-hats.json`:
 2. **Team Members**:
    ```bash
    git pull  # Get latest catalog and hats
-   # Open VS Code, go to Copilot Catalog view
+  # Open VS Code, go to ContextHub view
    # Click Hats → Apply Hat → Choose team preset
    ```
 
@@ -364,7 +363,7 @@ Tip: Do not hand-edit the manifest; scripts keep it correct based on package.jso
 
 **Solutions**:
 1. **Check catalog exists**: Ensure `copilot_catalog/` folder exists in workspace
-2. **Configure path**: Go to Settings → Copilot Catalog → Catalog Directory
+2. **Configure path**: Go to Settings → ContextHub → Catalog Directory
 3. **Refresh view**: Click refresh button in catalog view
 4. **Check workspace**: Ensure you have a workspace open (not just loose files)
 
@@ -408,12 +407,12 @@ Tip: Do not hand-edit the manifest; scripts keep it correct based on package.jso
 - Performance metrics
 
 **Check logs**: 
-- Output panel → "Copilot Catalog" channel
+- Output panel → "ContextHub" channel
 - If file logging enabled: User global storage location shown in diagnostics
 
 ### Getting Help
 
-1. **Check Output Panel**: View → Output → "Copilot Catalog"
+1. **Check Output Panel**: View → Output → "ContextHub"
 2. **Run Diagnostics**: Dev → Diagnostics in catalog view
 3. **Review Settings**: Ensure all paths are absolute and accessible
 4. **Test Minimal Setup**: Try with a simple catalog to isolate issues

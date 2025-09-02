@@ -1,10 +1,11 @@
-# Include only runtime necessities by excluding everything else
+# Include only runtime necessities by excluding dev and docs
 src/
 test/
 **/*.test.*
 .github/
 .vscode/
 .gitignore
+.gitattributes
 SOFTWARE_ARCHITECTURE_SPECIFICATION.md
 TESTPLAN.md
 SETUP_GUIDE.md
@@ -21,3 +22,11 @@ dist/test/
 build_vsix.ps1
 build_vsix.sh
 vsix/
+**/*.map
+**/*.ts
+**/*.tsbuildinfo
+**/*.log
+dev-sandbox/
+node_modules/
+!dist/**
+!resources/**

@@ -16,13 +16,13 @@ import { handleErrorWithNotification, getErrorMessage } from './utils/errors';
 
 // Lightweight logging helper (avoids creating multiple channels)
 let logChannel: vscode.OutputChannel | undefined;
-const LOG_FILENAME = 'copilot-catalog-debug.log';
+const LOG_FILENAME = 'contexthub-debug.log';
 let enableFileLogging = false;
 let logFilePath: string | undefined;
 async function log(msg: string){
 	const line = `[${new Date().toISOString()}] ${msg}`;
 	try {
-		if(!logChannel){ logChannel = vscode.window.createOutputChannel('Copilot Catalog'); }
+		if(!logChannel){ logChannel = vscode.window.createOutputChannel('ContextHub'); }
 		logChannel.appendLine(line);
 		// Optional mirror to a log file under user global storage (not in workspace)
 		if(enableFileLogging && logFilePath){
@@ -124,10 +124,10 @@ async function discoverRepositories(runtimeDirName: string): Promise<Repository[
 
 export async function activate(context: vscode.ExtensionContext) {
 	// Pre-flight check to ensure we can log any startup errors
-	const preflightLog = (msg: string) => console.log(`[Copilot Catalog Pre-flight] ${msg}`);
+	const preflightLog = (msg: string) => console.log(`[ContextHub Pre-flight] ${msg}`);
 	const preflightError = (msg: string, err: any) => {
-		console.error(`[Copilot Catalog Pre-flight ERROR] ${msg}`, err);
-		vscode.window.showErrorMessage(`Copilot Catalog failed to activate: ${msg}. See Developer Tools console.`);
+		console.error(`[ContextHub Pre-flight ERROR] ${msg}`, err);
+		vscode.window.showErrorMessage(`ContextHub failed to activate: ${msg}. See Developer Tools console.`);
 	};
 
 	preflightLog('Activating...');
@@ -388,11 +388,11 @@ export async function activate(context: vscode.ExtensionContext) {
 				try { updateStatus(); } catch { /* ignore */ }
 			} catch(e:any){
 				log('Refresh error: ' + (e?.stack || e));
-				vscode.window.showErrorMessage('Copilot Catalog refresh failed: ' + getErrorMessage(e));
+				vscode.window.showErrorMessage('ContextHub refresh failed: ' + getErrorMessage(e));
 			}
 		}
 
-		log('Activating Copilot Catalog extension');
+		log('Activating ContextHub extension');
 
 			const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 50);
 			status.command = 'copilotCatalog.refresh';
@@ -402,10 +402,10 @@ export async function activate(context: vscode.ExtensionContext) {
 						allResources;
 					const active = filteredResources.filter(r => r.state === ResourceState.ACTIVE).length;
 					const statusText = catalogFilter ? 
-						`Copilot Catalog $(library) ${active}/${filteredResources.length} [${catalogFilter}]` :
-						`Copilot Catalog $(library) ${active}/${filteredResources.length}`;
+						`ContextHub $(library) ${active}/${filteredResources.length} [${catalogFilter}]` :
+						`ContextHub $(library) ${active}/${filteredResources.length}`;
 					status.text = statusText;
-					status.tooltip = 'Copilot Catalog: Refresh';
+					status.tooltip = 'ContextHub: Refresh';
 					status.show();
 				}
 			context.subscriptions.push(status);
@@ -478,7 +478,7 @@ export async function activate(context: vscode.ExtensionContext) {
 					runtimeDirName
 				};
 				await log('Diagnostics:\n'+ JSON.stringify(diag,null,2));
-				vscode.window.showInformationMessage('Copilot Catalog diagnostics written to output channel.');
+				vscode.window.showInformationMessage('ContextHub diagnostics written to output channel.');
 			}),
 			vscode.commands.registerCommand('copilotCatalog.dumpResources', async () => {
 				await log(`DumpResources: count=${resources.length}`);
@@ -573,7 +573,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			}),
 			vscode.commands.registerCommand('copilotCatalog.selectRepository', async () => {
 				if (repositories.length === 0) {
-					vscode.window.showWarningMessage('No repositories with copilot catalog found.');
+					vscode.window.showWarningMessage('No repositories with a ContextHub catalog found.');
 					return;
 				}
 				const pick = await vscode.window.showQuickPick(repositories.map(r => ({ label: r.name, description: r.rootPath })), { placeHolder: 'Select repository' });
@@ -623,18 +623,17 @@ export async function activate(context: vscode.ExtensionContext) {
 						[
 							'# Catalog Setup Helper (Chatmode)',
 							'',
-							'This chatmode must ONLY help the user set up and manage a Copilot Catalog using this extension. It must NOT answer or perform any unrelated tasks.',
+							'This chatmode must ONLY help the user set up and manage a ContextHub catalog using this extension. It must NOT answer or perform any unrelated tasks.',
 							'',
 							'Rules:',
 							'- Scope strictly to catalog setup: scaffolding folders, configuring settings, activating/deactivating resources, understanding Hats, and packaging/installation steps.',
-							'- If asked anything outside catalog setup, politely refuse and redirect: "I can only help with Copilot Catalog setup and management. Please ask a catalog-related question."',
+							'- If asked anything outside catalog setup, politely refuse and redirect: "I can only help with ContextHub catalog setup and management. Please ask a catalog-related question."',
 							'- Remind the user of their duties: they own repo structure, security reviews, versioning, and Marketplace publishing credentials.',
 							'- Never run shell commands unless explicitly asked; provide minimal, copyable commands and explain effects.',
 							'- Be concise, concrete, and avoid speculative answers.',
 							'',
 							'Quick references:',
-							'- Dev menu (title bar) → Create Template Catalog, Configure Source/Target Settings',
-							'- Settings: "Copilot Catalog" → rootCatalogPath, targetWorkspace, catalogDirectory, runtimeDirectory',
+							'- Settings: "ContextHub" → rootCatalogPath, targetWorkspace, catalogDirectory, runtimeDirectory',
 							'- Hats: presets to activate/deactivate groups of resources',
 						].join('\n')
 					);
@@ -644,7 +643,7 @@ export async function activate(context: vscode.ExtensionContext) {
 							'# Instruction: Catalog-Setup-Only Guardrails',
 							'',
 							'When this instruction is active:',
-							'- Answer only questions about setting up and managing the Copilot Catalog.',
+							'- Answer only questions about setting up and managing the ContextHub catalog.',
 							'- If the user asks about coding, debugging, or anything unrelated, respond with a brief refusal and suggest a catalog-related next step.',
 							'- Always remind the user they are responsible for repository structure, security policies, and versioning decisions.',
 							'- Prefer short actionable guidance referencing VS Code UI locations (e.g., view title bar → Dev menu).',
@@ -653,9 +652,9 @@ export async function activate(context: vscode.ExtensionContext) {
 					await fs.writeFile(
 						path.join(root, 'prompts', 'init-catalog.prompt.md'),
 						[
-							'# Prompt: Initialize a Copilot Catalog in this Workspace',
+							'# Prompt: Initialize a ContextHub Catalog in this Workspace',
 							'',
-							'Goal: Help me set up a Copilot Catalog that I can share with my team, and remind me of my responsibilities.',
+							'Goal: Help me set up a ContextHub catalog that I can share with my team, and remind me of my responsibilities.',
 							'',
 							'Constraints:',
 							'- Do NOT answer non-catalog questions; refuse and redirect to catalog setup.',
@@ -672,9 +671,9 @@ export async function activate(context: vscode.ExtensionContext) {
 						path.join(root, 'tasks', 'catalog-setup-walkthrough.task.json'),
 						JSON.stringify({
 							name: 'Task: Catalog Setup Walkthrough',
-							description: 'Step-by-step guide to initialize and use the Copilot Catalog (setup-only).',
+							description: 'Step-by-step guide to initialize and use your catalog (setup-only).',
 							steps: [
-								'Open the Copilot Catalog view and use the Dev menu to Create Template Catalog.',
+								'Open the ContextHub view and use the Dev menu to Create Template Catalog.',
 								'Place the catalog in your desired folder and name it (default: copilot_catalog).',
 								'Configure catalog directories using Dev menu → Configure Settings, then add catalog directories.',
 								'Use Activate on a resource to copy it to your runtime (e.g., .github).',
@@ -684,7 +683,7 @@ export async function activate(context: vscode.ExtensionContext) {
 						}, null, 2)
 					);
 					await fs.writeFile(path.join(root, 'mcp', 'catalog-servers.mcp.json'), '{"servers": {}}');
-					await fs.writeFile(path.join(root, 'hats', 'Copilot-Catalog-Setup.json'), JSON.stringify({ name: 'Copilot Catalog Setup', description: 'Only the example assets generated by the template', resources: [
+					await fs.writeFile(path.join(root, 'hats', 'Copilot-Catalog-Setup.json'), JSON.stringify({ name: 'ContextHub Setup', description: 'Only the example assets generated by the template', resources: [
 						'chatmodes/catalog-manager-agent.chatmode.md',
 						'instructions/catalog-setup-guardrails.instructions.md',
 						'prompts/init-catalog.prompt.md',
@@ -703,7 +702,7 @@ export async function activate(context: vscode.ExtensionContext) {
 							const currentCatalogDirectories = cfg.get<Record<string, string>>('copilotCatalog.catalogDirectory', {});
 							const newCatalogDirectories = {...currentCatalogDirectories, [root]: ''};
 							await cfg.update('copilotCatalog.catalogDirectory', newCatalogDirectories, vscode.ConfigurationTarget.WorkspaceFolder);
-							vscode.window.showInformationMessage('Configured Copilot Catalog to use the new template directory.');
+							vscode.window.showInformationMessage('Configured ContextHub to use the new template directory.');
 						} catch { /* ignore */ }
 					}
 					await refresh();
@@ -713,7 +712,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				let pick: { label: string; action: 'openSettings'|'addDirectory'|'setTarget' } | undefined;
 				try {
 					pick = await vscode.window.showQuickPick([
-						{ label: 'Open Settings UI (Copilot Catalog)', action: 'openSettings' },
+						{ label: 'Open Settings UI (ContextHub)', action: 'openSettings' },
 						{ label: 'Add Catalog Directory…', action: 'addDirectory' },
 						{ label: 'Set Target Workspace…', action: 'setTarget' }
 					], { placeHolder: 'Configure catalog directories and settings' });
@@ -722,7 +721,7 @@ export async function activate(context: vscode.ExtensionContext) {
 					const choice = await vscode.window.showInputBox({ prompt: 'Type one: openSettings | addDirectory | setTarget' });
 					if(!choice) return;
 					const v = choice.trim().toLowerCase();
-					if(v==='opensettings') pick = { label:'Open Settings UI (Copilot Catalog)', action:'openSettings' };
+					if(v==='opensettings') pick = { label:'Open Settings UI (ContextHub)', action:'openSettings' };
 					else if(v==='adddirectory') pick = { label:'Add Catalog Directory…', action:'addDirectory' } as any;
 					else if(v==='settarget') pick = { label:'Set Target Workspace…', action:'setTarget' } as any;
 					else return;
@@ -981,7 +980,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
 			if (needsReload) {
 				const selection = await vscode.window.showInformationMessage(
-					'Copilot Catalog settings have changed that require a reload to take effect.',
+					'ContextHub settings have changed that require a reload to take effect.',
 					'Reload Window'
 				);
 				if (selection === 'Reload Window') {

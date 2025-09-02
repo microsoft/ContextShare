@@ -31,12 +31,11 @@ export class OverviewTreeProvider {
   getChildren(e?: CatalogTreeItem): CatalogTreeItem[] {
     if(!this.repo){
       return [
-        this.infoItem('Welcome to Copilot Catalog Manager'),
+        this.infoItem('Welcome to ContextHub'),
         this.infoItem(''),
-        this.infoItem('No repository found with a copilot catalog.'),
-        this.infoItem('Use the Dev menu to create a template catalog.'),
-        this.infoItem('Or configure source/target settings.')
-      ];
+  this.infoItem('No repository found with a ContextHub catalog.'),
+        this.infoItem('Use the Dev menu to create a template catalog.')
+            ];
     }
     
     if(this.resources.length === 0){

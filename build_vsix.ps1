@@ -66,7 +66,10 @@ try {
 
   npm run build | Out-Null
 
-  $pkgName = "copilot-catalog-manager-$Version"
+  # Use package.json name for VSIX filename prefix
+  $pkg = Get-Content package.json -Raw | ConvertFrom-Json
+  $pkgId = if($pkg.name){ [string]$pkg.name } else { 'contexthub' }
+  $pkgName = "$pkgId-$Version"
   if(Test-Path "$pkgName.vsix"){ Remove-Item "$pkgName.vsix" -Force }
   if(Test-Path vsix_build){ Remove-Item vsix_build -Recurse -Force }
   New-Item -ItemType Directory -Path (Join-Path 'vsix_build' 'extension') | Out-Null

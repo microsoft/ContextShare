@@ -1,8 +1,8 @@
 {
-  "name": "copilot-catalog-manager",
-  "displayName": "Copilot Catalog Manager",
+  "name": "contexthub",
+  "displayName": "ContextHub",
   "description": "Manage AI assistant catalog resources (chat modes, instructions, prompts, tasks, MCP) across multiple repositories inside VS Code.",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "publisher": "JonathanN",
   "engines": {
     "vscode": "^1.90.0"
@@ -11,9 +11,9 @@
     "Other"
   ],
   "icon": "resources/icon.png",
-  "main": "dist/src/extension.js",
+  "main": "dist/extension.js",
   "activationEvents": [
-    "*"
+    "onStartupFinished"
   ],
   "contributes": {
     "submenus": [
@@ -29,7 +29,7 @@
       }
     ],
     "configuration": {
-      "title": "Copilot Catalog",
+      "title": "ContextHub",
       "properties": {
         "copilotCatalog.catalogDirectory": {
           "type": "object",
@@ -123,7 +123,7 @@
       "activitybar": [
         {
           "id": "copilotCatalog",
-          "title": "Copilot Catalog",
+          "title": "ContextHub",
           "icon": "resources/activity-icon-book.svg"
         }
       ]
@@ -177,12 +177,12 @@
     "commands": [
       {
         "command": "copilotCatalog.refresh",
-        "title": "Copilot Catalog: Refresh",
+        "title": "ContextHub: Refresh",
         "icon": "$(refresh)"
       },
       {
         "command": "copilotCatalog.openSettings",
-        "title": "Copilot Catalog: Open Settings",
+        "title": "ContextHub: Open Settings",
         "icon": "$(gear)"
       },
       {
@@ -195,37 +195,37 @@
       },
       {
         "command": "copilotCatalog.activateAll",
-        "title": "Copilot Catalog: Activate All",
+        "title": "ContextHub: Activate All",
         "icon": "$(check)"
       },
       {
         "command": "copilotCatalog.deactivateAll",
-        "title": "Copilot Catalog: Deactivate All",
+        "title": "ContextHub: Deactivate All",
         "icon": "$(circle-slash)"
       },
       {
         "command": "copilotCatalog.showDiff",
-        "title": "Copilot Catalog: Show Diff"
+        "title": "ContextHub: Show Diff"
       },
       {
         "command": "copilotCatalog.selectRepository",
-        "title": "Copilot Catalog: Select Repository"
+        "title": "ContextHub: Select Repository"
       },
       {
         "command": "copilotCatalog.diagnostics",
-        "title": "Copilot Catalog: Diagnostics"
+        "title": "ContextHub: Diagnostics"
       },
       {
         "command": "copilotCatalog.openResource",
-        "title": "Copilot Catalog: Open Resource"
+        "title": "ContextHub: Open Resource"
       },
       {
         "command": "copilotCatalog.editActivatedCopy",
-        "title": "Copilot Catalog: Edit Activated Copy"
+        "title": "ContextHub: Edit Activated Copy"
       },
       {
         "command": "copilotCatalog.hats.apply",
-        "title": "Copilot Catalog: Apply Hat (Preset)",
+        "title": "ContextHub: Apply Hat (Preset)",
         "icon": {
           "light": "resources/icons/hat-light.svg",
           "dark": "resources/icons/hat-dark.svg"
@@ -233,37 +233,33 @@
       },
       {
         "command": "copilotCatalog.hats.createWorkspace",
-        "title": "Copilot Catalog: Save Hat from Active (Workspace)",
+        "title": "ContextHub: Save Hat from Active (Workspace)",
         "icon": "$(save)"
       },
       {
         "command": "copilotCatalog.hats.createUser",
-        "title": "Copilot Catalog: Save Hat from Active (User)",
+        "title": "ContextHub: Save Hat from Active (User)",
         "icon": "$(account)"
       },
       {
         "command": "copilotCatalog.hats.delete",
-        "title": "Copilot Catalog: Delete Hat (Workspace/User)",
+        "title": "ContextHub: Delete Hat (Workspace/User)",
         "icon": "$(trash)"
       },
       {
         "command": "copilotCatalog.dev.createTemplateCatalog",
-        "title": "Copilot Catalog (Dev): Create Template Catalog",
+        "title": "ContextHub (Dev): Create Template Catalog",
         "icon": "$(new-folder)"
       },
-      {
-        "command": "copilotCatalog.dev.configureSettings",
-        "title": "Copilot Catalog (Dev): Configure Source/Target Settings",
-        "icon": "$(gear)"
-      },
+
       {
         "command": "copilotCatalog.addCatalogDirectory",
-        "title": "Copilot Catalog: Add Catalog Directory…",
+        "title": "ContextHub: Add Catalog Directory…",
         "icon": "$(folder-opened)"
       },
       {
         "command": "copilotCatalog.filterCatalog",
-        "title": "Copilot Catalog: Filter by Catalog",
+        "title": "ContextHub: Filter by Catalog",
         "icon": "$(filter)"
       },
       {
@@ -338,6 +334,16 @@
           "command": "copilotCatalog.refresh",
           "when": "view =~ /copilotCatalog.*/",
           "group": "navigation"
+        },
+        {
+          "submenu": "copilotCatalog.hatsMenu",
+          "when": "view == copilotCatalogOverview || view == copilotCatalogChatmodes",
+          "group": "navigation@b"
+        },
+        {
+          "submenu": "copilotCatalog.devMenu",
+          "when": "view == copilotCatalogOverview || view == copilotCatalogChatmodes",
+          "group": "navigation@c"
         }
       ],
       "copilotCatalog.hatsMenu": [
@@ -388,17 +394,18 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/microsoft/vscode-copilot-catalog-manager.git"
+    "url": "https://github.com/microsoft/vscode-contexthub.git"
   },
-  "homepage": "https://github.com/microsoft/vscode-copilot-catalog-manager#readme",
+  "homepage": "https://github.com/microsoft/vscode-contexthub#readme",
   "bugs": {
-    "url": "https://github.com/microsoft/vscode-copilot-catalog-manager/issues"
+    "url": "https://github.com/microsoft/vscode-contexthub/issues"
   },
   "license": "MIT",
   "scripts": {
     "vscode:prepublish": "npm run build",
-    "build": "tsc -p .",
+    "build": "tsc -p . && npm run bundle",
     "watch": "tsc -w -p .",
+    "bundle": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --platform=node --format=cjs --external:vscode --sourcemap",
     "package": "echo 'vsce not installed in offline env'",
     "verify:version": "node scripts/verify-version-sync.js",
     "test": "node dist/test/resourceService.test.js && node dist/test/treeIcons.test.js && node dist/test/naming.test.js && node dist/test/mcpMerge.test.js && node dist/test/hats.test.js && node dist/test/commandsRegistered.test.js && node dist/test/display.test.js && node dist/test/catalogDisplayName.test.js && node dist/test/repositoryDiscovery.test.js && node dist/test/targetPath.test.js && node dist/test/workspaceConfiguration.test.js && node dist/test/resourceActivation.test.js",
@@ -410,6 +417,7 @@
     "@types/node": "^20.14.10",
     "@types/vscode": "^1.90.0",
   "typescript": "^5.4.0",
-  "@vscode/vsce": "^3.0.0"
+  "@vscode/vsce": "^3.0.0",
+  "esbuild": "^0.21.5"
   }
 }

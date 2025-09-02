@@ -35,7 +35,7 @@ export class CategoryTreeProvider {
   
   getChildren(e?: CatalogTreeItem): CatalogTreeItem[] {
     if(!this.repo){
-      return [this.placeholderItem('No repository found with a copilot catalog.')];
+  return [this.placeholderItem('No repository found with a ContextHub catalog.')];
     }
     
     if(this.resources.length === 0){

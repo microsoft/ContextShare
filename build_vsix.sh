@@ -111,7 +111,13 @@ echo "Building VSIX for version $VERSION"
 echo "Running npm build..."
 npm run build
 
-PKG_NAME="copilot-catalog-manager-$VERSION"
+# Use package.json name for VSIX filename prefix
+if command -v node >/dev/null 2>&1; then
+    PKG_ID=$(node -e "console.log(require('./package.json').name)")
+else
+    PKG_ID="contexthub"
+fi
+PKG_NAME="$PKG_ID-$VERSION"
 
 # Clean up any existing files
 rm -f "$PKG_NAME.vsix"
