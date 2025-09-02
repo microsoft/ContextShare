@@ -2,26 +2,6 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Build Extension",
-      "type": "shell",
-      "command": "npm",
-      "args": [
-        "run",
-        "build"
-      ],
-      "group": {
-        "kind": "build",
-        "isDefault": true
-      },
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "shared"
-      },
-      "problemMatcher": "$tsc"
-    },
-    {
       "label": "Run Tests",
       "type": "shell",
       "command": "npm",
@@ -70,32 +50,6 @@
       }
     },
     {
-      "label": "Install Local VSIX",
-      "type": "shell",
-      "command": "bash",
-      "args": [
-        "-c",
-        "latest=$(ls -t contexthub-*.vsix 2>/dev/null | head -1); if [ -n \"$latest\" ]; then echo \"Installing $latest\"; code --install-extension \"$latest\" --force; else echo \"No VSIX found\"; fi"
-      ],
-      "windows": {
-        "command": "pwsh",
-        "args": [
-          "-NoLogo",
-          "-NoProfile",
-          "-Command",
-          "$latest = Get-ChildItem -File contexthub-*.vsix | Sort-Object LastWriteTime -Descending | Select-Object -First 1; if ($latest) { Write-Host \"Installing $($latest.Name)\"; code --install-extension $latest.FullName --force } else { Write-Host \"No VSIX found\" }"
-        ]
-      },
-      "group": "build",
-      "dependsOn": "Build VSIX Package",
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "shared"
-      }
-    },
-    {
       "label": "Watch Mode",
       "type": "shell",
       "command": "npm",
@@ -114,22 +68,6 @@
       "problemMatcher": "$tsc-watch"
     },
     {
-      "label": "Clean Build",
-      "type": "shell",
-      "command": "bash",
-      "args": [
-        "-c",
-        "rm -rf dist; rm -f *.vsix; npm run build"
-      ],
-      "group": "build",
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "shared"
-      }
-    },
-    {
       "label": "Install Dependencies",
       "type": "shell",
       "command": "npm",
@@ -137,84 +75,6 @@
         "install"
       ],
       "group": "build"
-    },
-    {
-      "label": "Check VSIX Contents",
-      "type": "shell",
-      "command": "bash",
-      "args": [
-        "-c",
-        "latest=$(ls -t contexthub-*.vsix 2>/dev/null | head -1); if [ -n \"$latest\" ]; then unzip -l \"$latest\" | head -20; else echo \"No VSIX found\"; fi"
-      ],
-      "windows": {
-        "command": "pwsh",
-        "args": [
-          "-NoLogo",
-          "-NoProfile",
-          "-Command",
-          "$latest = Get-ChildItem -File contexthub-*.vsix | Sort-Object LastWriteTime -Descending | Select-Object -First 1; if ($latest) { Add-Type -AssemblyName 'System.IO.Compression.FileSystem'; $zip=[IO.Compression.ZipFile]::OpenRead($latest.FullName); $zip.Entries | Select-Object -First 30 FullName | ForEach-Object { $_ } } else { Write-Host 'No VSIX found' }"
-        ]
-      }
-    },
-    {
-      "label": "List VSIX Files",
-      "type": "shell",
-      "command": "ls -la *.vsix"
-    },
-    {
-      "label": "Bump Version - Patch",
-      "type": "shell",
-      "command": "npm",
-      "args": [
-        "version",
-        "patch"
-      ],
-      "group": "build"
-    },
-    {
-      "label": "Bump Version - Minor",
-      "type": "shell",
-      "command": "npm",
-      "args": [
-        "version",
-        "minor"
-      ],
-      "group": "build"
-    },
-    {
-      "label": "Bump Version - Major",
-      "type": "shell",
-      "command": "npm",
-      "args": [
-        "version",
-        "major"
-      ],
-      "group": "build"
-    },
-    {
-      "label": "Install Latest VSIX",
-      "type": "shell",
-      "command": "bash",
-      "args": [
-        "-c",
-        "latest=$(ls -t contexthub-*.vsix 2>/dev/null | head -1); if [ -n \"$latest\" ]; then echo \"Installing $latest\"; code --install-extension \"$latest\" --force; else echo \"No VSIX found\"; fi"
-      ],
-      "group": "build",
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "shared"
-      }
-    },
-    {
-      "label": "Check Latest VSIX Contents",
-      "type": "shell",
-      "command": "bash",
-      "args": [
-        "-c",
-        "latest=$(ls -t contexthub-*.vsix 2>/dev/null | head -1); if [ -n \"$latest\" ]; then unzip -l \"$latest\" | head -30; else echo \"No VSIX found\"; fi"
-      ]
     }
   ]
 }
