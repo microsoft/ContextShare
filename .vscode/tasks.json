@@ -56,9 +56,11 @@
 			"label": "Build VSIX Package",
 			"type": "shell",
 			"command": "bash",
-			"args": [
-				"./build_vsix.sh"
-			],
+			"args": ["./build_vsix.sh"],
+			"windows": {
+				"command": "pwsh",
+				"args": ["./build_vsix.ps1"]
+			},
 			"group": "build",
 			"dependsOn": "Build Extension",
 			"presentation": {
@@ -76,6 +78,15 @@
 				"-c",
 				"latest=$(ls -t copilot-catalog-manager-*.vsix 2>/dev/null | head -1); if [ -n \"$latest\" ]; then echo \"Installing $latest\"; code --install-extension \"$latest\" --force; else echo \"No VSIX found\"; fi"
 			],
+			"windows": {
+				"command": "pwsh",
+				"args": [
+					"-NoLogo",
+					"-NoProfile",
+					"-Command",
+					"$latest = Get-ChildItem -File copilot-catalog-manager-*.vsix | Sort-Object LastWriteTime -Descending | Select-Object -First 1; if ($latest) { Write-Host \"Installing $($latest.Name)\"; code --install-extension $latest.FullName --force } else { Write-Host \"No VSIX found\" }"
+				]
+			},
 			"group": "build",
 			"dependsOn": "Build VSIX Package",
 			"presentation": {
@@ -140,7 +151,16 @@
 			"args": [
 				"-c",
 				"latest=$(ls -t copilot-catalog-manager-*.vsix 2>/dev/null | head -1); if [ -n \"$latest\" ]; then unzip -l \"$latest\" | head -20; else echo \"No VSIX found\"; fi"
-			]
+			],
+			"windows": {
+				"command": "pwsh",
+				"args": [
+					"-NoLogo",
+					"-NoProfile",
+					"-Command",
+					"$latest = Get-ChildItem -File copilot-catalog-manager-*.vsix | Sort-Object LastWriteTime -Descending | Select-Object -First 1; if ($latest) { Add-Type -AssemblyName 'System.IO.Compression.FileSystem'; $zip=[IO.Compression.ZipFile]::OpenRead($latest.FullName); $zip.Entries | Select-Object -First 30 FullName | ForEach-Object { $_ } } else { Write-Host 'No VSIX found' }"
+				]
+			}
 		},
 		{
 			"label": "List VSIX Files",
@@ -151,11 +171,11 @@
 			"label": "Bump Version - Patch",
 			"type": "shell",
 			"command": "bash",
-			"args": [
-				"./build_vsix.sh",
-				"--bump",
-				"patch"
-			],
+			"args": ["./build_vsix.sh", "--bump", "patch"],
+			"windows": {
+				"command": "pwsh",
+				"args": ["./build_vsix.ps1", "--bump", "patch"]
+			},
 			"group": "build",
 			"dependsOn": "Build Extension",
 			"presentation": {
@@ -169,11 +189,11 @@
 			"label": "Bump Version - Minor",
 			"type": "shell",
 			"command": "bash",
-			"args": [
-				"./build_vsix.sh",
-				"--bump",
-				"minor"
-			],
+			"args": ["./build_vsix.sh", "--bump", "minor"],
+			"windows": {
+				"command": "pwsh",
+				"args": ["./build_vsix.ps1", "--bump", "minor"]
+			},
 			"group": "build",
 			"dependsOn": "Build Extension",
 			"presentation": {
@@ -187,11 +207,11 @@
 			"label": "Bump Version - Major",
 			"type": "shell",
 			"command": "bash",
-			"args": [
-				"./build_vsix.sh",
-				"--bump",
-				"major"
-			],
+			"args": ["./build_vsix.sh", "--bump", "major"],
+			"windows": {
+				"command": "pwsh",
+				"args": ["./build_vsix.ps1", "--bump", "major"]
+			},
 			"group": "build",
 			"dependsOn": "Build Extension",
 			"presentation": {
