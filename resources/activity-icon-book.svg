@@ -1,11 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-  <!-- Book spine and cover -->
-  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+  <!-- Three stacked catalog layers -->
+  <rect x="4" y="3" width="16" height="3" rx="1.5" fill="currentColor" fill-opacity="0.8"/>
+  <rect x="4" y="7.5" width="16" height="3" rx="1.5" fill="currentColor" fill-opacity="0.6"/>
+  <rect x="4" y="12" width="16" height="3" rx="1.5" fill="currentColor" fill-opacity="0.4"/>
   
-  <!-- Content organization lines -->
-  <path d="M9 7h7M9 10h7M9 13h5M9 16h4"/>
-  
-  <!-- Small AI/catalog indicator -->
-  <circle cx="17" cy="5" r="1.2" fill="currentColor" stroke="none"/>
+  <!-- AI/Copilot agent indicator -->
+  <g transform="translate(12, 18)">
+    <!-- Agent body -->
+    <rect x="-2" y="-1.5" width="4" height="2" rx="1" stroke="currentColor" fill="none"/>
+    <!-- Agent hat/helmet -->
+    <path d="M-2.5 -1.5 Q0 -3 2.5 -1.5" stroke="currentColor" fill="none"/>
+    <!-- Connection points -->
+    <circle cx="-3" cy="0" r="0.5" fill="currentColor"/>
+    <circle cx="3" cy="0" r="0.5" fill="currentColor"/>
+  </g>
 </svg>
