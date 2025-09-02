@@ -163,8 +163,7 @@
         {
           "id": "copilotCatalogOptions",
           "name": "Options",
-          "icon": "$(gear)",
-          "when": "copilotCatalog.hasResources"
+            "icon": "$(gear)"
         },
         {
           "id": "copilotCatalogOverview",
@@ -251,7 +250,6 @@
         "title": "ContextHub (Dev): Create Template Catalog",
         "icon": "$(new-folder)"
       },
-
       {
         "command": "copilotCatalog.addCatalogDirectory",
         "title": "ContextHub: Add Catalog Directory…",
@@ -411,13 +409,13 @@
     "test": "node dist/test/resourceService.test.js && node dist/test/treeIcons.test.js && node dist/test/naming.test.js && node dist/test/mcpMerge.test.js && node dist/test/hats.test.js && node dist/test/commandsRegistered.test.js && node dist/test/display.test.js && node dist/test/catalogDisplayName.test.js && node dist/test/repositoryDiscovery.test.js && node dist/test/targetPath.test.js && node dist/test/workspaceConfiguration.test.js && node dist/test/resourceActivation.test.js",
     "test:all": "node dist/test/resourceService.test.js && node dist/test/treeIcons.test.js && node dist/test/naming.test.js && node dist/test/mcpMerge.test.js && node dist/test/hats.test.js && node dist/test/commandsRegistered.test.js && node dist/test/display.test.js && node dist/test/catalogDisplayName.test.js && node dist/test/repositoryDiscovery.test.js && node dist/test/targetPath.test.js && node dist/test/workspaceConfiguration.test.js && node dist/test/resourceActivation.test.js",
     "test:edge-cases": "node dist/test/repositoryDiscovery.test.js && node dist/test/targetPath.test.js && node dist/test/workspaceConfiguration.test.js && node dist/test/resourceActivation.test.js",
-  "package:vsix": "npx @vscode/vsce package"
+    "package:vsix": "npx @vscode/vsce package"
   },
   "devDependencies": {
     "@types/node": "^20.14.10",
     "@types/vscode": "^1.90.0",
-  "typescript": "^5.4.0",
-  "@vscode/vsce": "^3.0.0",
-  "esbuild": "^0.21.5"
+    "@vscode/vsce": "^3.0.0",
+    "esbuild": "^0.21.5",
+    "typescript": "^5.4.0"
   }
 }
