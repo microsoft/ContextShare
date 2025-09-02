@@ -147,6 +147,11 @@ echo "Updating manifest with version info..."
 # Update manifest version using sed (cross-platform)
 sed -i.bak "s/Version=\"[^\"]*\"/Version=\"$VERSION\"/" vsix_build/extension.vsixmanifest
 
+# Also keep the source manifest in sync to prevent CI mismatches
+if [ -f "vsix/extension.vsixmanifest" ]; then
+    sed -i.bak "s/Version=\"[^\"]*\"/Version=\"$VERSION\"/" vsix/extension.vsixmanifest
+fi
+
 # Extract publisher and name from package.json and update manifest
 if command -v node >/dev/null 2>&1; then
     PUBLISHER=$(node -e "const pkg=require('./package.json'); console.log(pkg.publisher || '')")
@@ -175,6 +180,7 @@ fi
 
 # Clean up sed backup files
 rm -f vsix_build/extension.vsixmanifest.bak
+rm -f vsix/extension.vsixmanifest.bak
 
 echo "Creating VSIX archive..."
 

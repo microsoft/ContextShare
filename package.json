@@ -389,6 +389,7 @@
     "build": "tsc -p .",
     "watch": "tsc -w -p .",
     "package": "echo 'vsce not installed in offline env'",
+  "verify:version": "node scripts/verify-version-sync.js",
     "test": "node dist/test/resourceService.test.js && node dist/test/treeIcons.test.js && node dist/test/naming.test.js && node dist/test/mcpMerge.test.js && node dist/test/hats.test.js && node dist/test/commandsRegistered.test.js && node dist/test/display.test.js && node dist/test/catalogDisplayName.test.js && node dist/test/repositoryDiscovery.test.js && node dist/test/targetPath.test.js && node dist/test/workspaceConfiguration.test.js && node dist/test/resourceActivation.test.js",
     "test:all": "node dist/test/resourceService.test.js && node dist/test/treeIcons.test.js && node dist/test/naming.test.js && node dist/test/mcpMerge.test.js && node dist/test/hats.test.js && node dist/test/commandsRegistered.test.js && node dist/test/display.test.js && node dist/test/catalogDisplayName.test.js && node dist/test/repositoryDiscovery.test.js && node dist/test/targetPath.test.js && node dist/test/workspaceConfiguration.test.js && node dist/test/resourceActivation.test.js",
     "test:edge-cases": "node dist/test/repositoryDiscovery.test.js && node dist/test/targetPath.test.js && node dist/test/workspaceConfiguration.test.js && node dist/test/resourceActivation.test.js",

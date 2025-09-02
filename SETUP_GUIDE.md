@@ -345,6 +345,16 @@ Popular choices:
 - `.copilot` - Clearly branded for AI resources
 
 ## Troubleshooting
+### CI fails: Version mismatch (package.json vs VSIX manifest)
+
+Cause: `vsix/extension.vsixmanifest` Version didn’t get updated.
+
+Fix:
+- Run one of the build scripts with --bump or --version, which auto-syncs the manifest:
+  - `pwsh ./build_vsix.ps1 --bump patch` or `bash ./build_vsix.sh --bump patch`
+- Or, run the guard: `npm run verify:version` to see the mismatch locally.
+
+Tip: Do not hand-edit the manifest; scripts keep it correct based on package.json.
 
 ### Common Issues
 

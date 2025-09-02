@@ -37,6 +37,22 @@
 			}
 		},
 		{
+			"label": "Verify Version Sync",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"verify:version"
+			],
+			"group": "build",
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			}
+		},
+		{
 			"label": "Build VSIX Package",
 			"type": "shell",
 			"command": "bash",
@@ -55,11 +71,10 @@
 		{
 			"label": "Install Local VSIX",
 			"type": "shell",
-			"command": "code",
+			"command": "bash",
 			"args": [
-				"--install-extension",
-				"${workspaceFolder}/copilot-catalog-manager-0.1.35.vsix",
-				"--force"
+				"-c",
+				"latest=$(ls -t copilot-catalog-manager-*.vsix 2>/dev/null | head -1); if [ -n \"$latest\" ]; then echo \"Installing $latest\"; code --install-extension \"$latest\" --force; else echo \"No VSIX found\"; fi"
 			],
 			"group": "build",
 			"dependsOn": "Build VSIX Package",
@@ -121,7 +136,11 @@
 		{
 			"label": "Check VSIX Contents",
 			"type": "shell",
-			"command": "unzip -l copilot-catalog-manager-0.1.35.vsix | head -20"
+			"command": "bash",
+			"args": [
+				"-c",
+				"latest=$(ls -t copilot-catalog-manager-*.vsix 2>/dev/null | head -1); if [ -n \"$latest\" ]; then unzip -l \"$latest\" | head -20; else echo \"No VSIX found\"; fi"
+			]
 		},
 		{
 			"label": "List VSIX Files",

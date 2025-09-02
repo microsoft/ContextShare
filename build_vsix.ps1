@@ -122,6 +122,18 @@ try {
   }
   Set-Content -Path $manifestPath -Value $manifestContent -NoNewline
 
+  # Keep the source manifest in sync to prevent CI drift
+  try {
+    $srcManifestPath = "vsix/extension.vsixmanifest"
+    if(Test-Path $srcManifestPath){
+      $srcContent = Get-Content $srcManifestPath -Raw
+      $srcContent = [System.Text.RegularExpressions.Regex]::Replace($srcContent, 'Version="[^"]+"', 'Version="' + $Version + '"')
+      Set-Content -Path $srcManifestPath -Value $srcContent -NoNewline
+    }
+  } catch {
+    Write-Warning ("Failed to update source manifest: " + $_.ToString())
+  }
+
   # Also update the packaged copy of package.json so VS Code reads the correct version/publisher
   $pkgCopyPath = "vsix_build/extension/package.json"
   if(Test-Path $pkgCopyPath){

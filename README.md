@@ -63,15 +63,18 @@ example-catalog/
 ## 🛠️ Development
 
 ### Prerequisites
-
+## Package VSIX
+### PowerShell (Windows/macOS/Linux)
 - Node.js 18+ and npm
+# or Bash (macOS/Linux)
+bash ./build_vsix.sh --bump minor
 - Visual Studio Code 1.90.0+
 - TypeScript 5.4+
 
 ### Building from Source
-
+2. **Version Management**: Use the build scripts to bump and build; they now auto-sync `vsix/extension.vsixmanifest` from `package.json` to prevent mismatches
 ```bash
-# Clone the repository
+4. **CI-friendly Packaging**: Do not edit `vsix/extension.vsixmanifest` manually; the build scripts update it based on `package.json`.
 git clone https://github.com/microsoft/vscode-copilot-catalog-manager.git
 cd vscode-copilot-catalog-manager
 
