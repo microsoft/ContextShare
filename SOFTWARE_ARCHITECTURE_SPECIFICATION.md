@@ -522,7 +522,7 @@ private remoteCache: Map<string, {
     "activitybar": [{
       "id": "copilotCatalog",
       "title": "Copilot Catalog", 
-      "icon": "resources/activity-icon-new.svg"
+      "icon": "resources/activity-icon-book.svg"
     }]
   },
   "views": {
