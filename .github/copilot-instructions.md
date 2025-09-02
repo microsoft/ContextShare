@@ -20,87 +20,93 @@ User Actions → Commands → Service Methods → File Operations → State Upda
 ### Resource States & Origins
 - **States**: `INACTIVE` (discovered), `ACTIVE` (copied to runtime), `MODIFIED` (edited after activation)
 - **Origins**: `catalog` (from catalog dirs), `user` (runtime-only), `remote` (fetched from URLs)
-- **Runtime Location**: `{workspace}/.github/{category}/` (configurable via `runtimeDirectory`)
+- **Runtime Locations**: 
+  - Most resources: `{workspace}/.github/{category}/`
+  - **MCP Exception**: Always targets `{workspace}/.vscode/mcp.json` (not under runtime dir)
 
 ## Key Development Patterns
 
 ### Resource Discovery Algorithm
-1. **Structured Discovery**: Scan `{catalog}/{category}/` directories first
-2. **Fallback Discovery**: Recursive filename-based classification for loose files when using root catalog override
-3. **Remote Handling**: Single file URLs or directory URLs with `index.json` manifest
-4. **User Asset Detection**: Compare runtime directory against catalog to identify user-created resources
+1. **Root Override Priority**: When `rootCatalogOverride` is set, it takes precedence over per-category overrides
+2. **Filename-Based Classification**: Uses `inferCategoryFromFilename()` for recursive discovery (`.chatmode.md`, `.instruction.md`, etc.)
+3. **Remote Sources**: Support HTTPS-only URLs with `index.json` manifest for directories
+4. **User Asset Detection**: Compare runtime vs catalog locations to identify user-created resources
 
-### Testing Approach (TDD Required)
-- Use `MockFileService` for isolated unit tests
-- All test files run via `npm test` (no external test runner)
-- Key test areas: resource discovery, state transitions, MCP merging, Hat presets, edge cases
-- Run tests before packaging: `npm run build && npm test`
+### Testing Framework (TDD Required)
+- **MockFileService**: Use canonical version from `test/fileService.mock.ts` (avoid inline duplicates)
+- **Test Utilities**: `createTestPaths()` in `testUtils.ts` for consistent path structures
+- **Path Assertions**: Use cross-platform path comparison patterns consistently
+- **Run Order**: Always `npm run build && npm test` before packaging
 
-### MCP Integration Pattern
-Special handling for Model Context Protocol servers:
-- Merge multiple MCP configs into single target file
-- Track added server names in sidecar metadata for cleanup
-- Use `stripJsonComments()` to handle commented JSON configs
+### MCP Integration (Special Case)
+Model Context Protocol servers require unique merge semantics:
+- **Merge Strategy**: Combines multiple catalog MCP configs into single target file
+- **Conflict Resolution**: Deduplicates identical server configs, renames conflicts with `-catalog` suffix
+- **Sidecar Metadata**: Tracks added server names in `.copilot-catalog-mcp-meta.json` for cleanup
+- **JSON Comments**: Use `stripJsonComments()` for commented JSON configs
+- **Target Path**: Always `.vscode/mcp.json`, never under runtime directory
+
+### Target Path Resolution Logic
+The extension supports multiple workspace targeting modes:
+1. **Target Workspace Override**: When `copilotCatalog.targetWorkspace` is set, use that absolute path
+2. **Current Workspace Root**: Falls back to detected current workspace
+3. **Repository Root**: Final fallback to catalog repository root
 
 ## Build & Package Workflow
 
 ### Development Commands
 ```bash
 npm run build          # TypeScript compilation to dist/
-npm run watch          # Watch mode for development
+npm run watch          # Watch mode for development  
 npm test              # Run all test suites
 ```
 
-### VSIX Packaging (Cross-Platform)
-Use `./build_vsix.ps1` (PowerShell Core) which:
-- Updates version/publisher from package.json → vsix manifest
-- Excludes node_modules/.git/vsix_build from package
-- Uses Compress-Archive → zip CLI → .NET ZipFile fallback
-- Copies result to `build/` directory
+### Cross-Platform VSIX Building
+- **Primary**: `./build_vsix.ps1` (PowerShell Core) with version bump support
+- **Fallback**: `./build_vsix.sh` (Bash) for non-PowerShell environments
+- **Version Management**: Syncs `package.json` version ↔ `vsix/extension.vsixmanifest`
+- **Task Integration**: Use VS Code tasks for build automation (`npm run build`, `npm test`)
 
-### Configuration Override System
-Two modes for catalog discovery:
-1. **Per-Category Overrides**: `copilotCatalog.chatmodesDirectory`, etc.
-2. **Root Catalog Override**: `copilotCatalog.rootCatalogOverride` (takes precedence)
-
-When root override is set, uses filename heuristics to classify resources into categories.
+### Configuration Discovery Modes
+1. **Structured Mode**: Explicit per-category paths (`copilotCatalog.source.chatmodes`, etc.)
+2. **Root Override Mode**: Single `rootCatalogOverride` path with recursive filename classification
+3. **Auto-Discovery**: Fallback to `copilot_catalog/` folders in workspace
 
 ## VS Code Integration Points
 
-### Tree Data Providers
-- `CategoryTreeProvider`: Groups resources by category (chatmodes, instructions, etc.)
-- `OverviewTreeProvider`: Shows welcome screen when no resources found
-- Context menu actions: activate, deactivate, open, show diff
+### Tree Providers & UI
+- **CategoryTreeProvider**: Category-specific views with resource filtering by catalog name
+- **State Icons**: Different icons for INACTIVE/ACTIVE/MODIFIED states via `computeIconId()`
+- **Context Menus**: Activate/deactivate actions, diff viewing, user resource enable/disable
+- **Command Pattern**: All commands registered in `extension.ts` activation with consistent error handling
 
-### Command Registration Pattern
-Register commands in `extension.ts` `activate()` using:
-```typescript
-vscode.commands.registerCommand('copilotCatalog.commandName', async (item) => {
-  // Command implementation
-});
-```
-
-### Settings Schema
-All configuration in `package.json` → `contributes.configuration.properties`:
-- Use `patternProperties` for dynamic catalog directory mappings
-- Include `order` property for settings UI grouping
+### Configuration Schema Pattern
+Settings in `package.json` use:
+- `patternProperties` for flexible catalog path mappings
+- `order` properties for settings UI organization
+- Dynamic validation for remote URL schemes (HTTPS-only)
 
 ## Security & Privacy Considerations
 
-- **Path Safety**: Use `isSafeRelativeEntry()` and `sanitizeFilename()` for remote content
-- **Scope Confinement**: All writes confined to designated runtime directories
+- **Remote Safety**: HTTPS-only remote sources, path traversal protection via `isSafeRelativeEntry()`
+- **Filename Sanitization**: `sanitizeFilename()` for all remote content
+- **Scope Confinement**: All file operations within designated runtime/target directories
 - **User Asset Protection**: Never delete user-created resources during deactivation
-- **Remote Caching**: Configurable TTL with privacy-friendly local storage only
+- **Cache Strategy**: Local-only TTL caching, no external telemetry
 
 ## Common Debugging Scenarios
 
-### Resource Not Appearing
-1. Check catalog path configuration in settings
-2. Verify file naming follows category conventions (`.chatmode.md`, `.instruction.md`, etc.)
-3. Check if root catalog override is interfering with per-category paths
+### Resource Discovery Issues
+1. **Check Override Priority**: Root catalog override trumps per-category settings
+2. **Filename Conventions**: Verify `.chatmode.md`, `.instruction.md`, `.prompt.md`, `.task.json`, `.mcp.json`
+3. **Path Resolution**: Use VS Code output channel for resource discovery logging
 
-### State Sync Issues
-Resources maintain state through `getResourceState()` comparison between catalog and runtime locations. Modified detection compares file content, not just timestamps.
+### MCP Merge Failures  
+1. **JSON Syntax**: Ensure MCP configs are valid JSON (comments stripped automatically)
+2. **Sidecar Metadata**: Check `.copilot-catalog-mcp-meta.json` for tracking issues
+3. **Target Path**: MCP always targets `.vscode/mcp.json`, not runtime directory
 
-### Hat Application Failures
-Hats reference resources by `relativePath`. Ensure hat definitions use correct path separators and category prefixes.
+### State Sync Problems
+- State determined by content comparison between catalog and runtime files
+- MODIFIED state indicates runtime file exists but differs from catalog source
+- User resources cannot be deactivated (protection mechanism)

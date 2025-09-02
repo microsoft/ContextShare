@@ -2,7 +2,7 @@
   "name": "copilot-catalog-manager",
   "displayName": "Copilot Catalog Manager",
   "description": "Manage AI assistant catalog resources (chat modes, instructions, prompts, tasks, MCP) across multiple repositories inside VS Code.",
-  "version": "0.1.36",
+  "version": "0.2.0",
   "publisher": "microsoft",
   "engines": {
     "vscode": "^1.90.0"

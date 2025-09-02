@@ -15,46 +15,79 @@ export class ResourceService implements IResourceService {
   private targetWorkspaceOverride?: string;
   private currentWorkspaceRoot?: string;
   private runtimeDirectoryName: string = '.github'; // Default runtime directory
+  private logger?: (msg: string) => void;
   constructor(private fileService: IFileService){}
+
+  // Optional logger injected by host extension
+  setLogger(fn?: (msg: string) => void){ this.logger = fn; }
+  private log(msg: string){ try { this.logger?.(msg); } catch { /* ignore logging errors */ } }
 
   setTargetWorkspaceOverride(path?: string){
     this.targetWorkspaceOverride = path && path.trim() ? path : undefined;
+  this.log(`[ResourceService] setTargetWorkspaceOverride=${this.targetWorkspaceOverride || '(cleared)'}`);
   }
 
   setCurrentWorkspaceRoot(path?: string){
     this.currentWorkspaceRoot = path && path.trim() ? path : undefined;
+  this.log(`[ResourceService] setCurrentWorkspaceRoot=${this.currentWorkspaceRoot || '(cleared)'}`);
   }
 
   setRuntimeDirectoryName(name: string){
     this.runtimeDirectoryName = name || '.github';
+  this.log(`[ResourceService] setRuntimeDirectoryName=${this.runtimeDirectoryName}`);
   }
 
   setSourceOverrides(overrides: Partial<Record<ResourceCategory,string>>){
     this.sourceOverrides = overrides;
+  const keys = Object.keys(overrides||{}).join(',') || '(none)';
+  this.log(`[ResourceService] setSourceOverrides keys=${keys}`);
   }
 
   setRemoteCacheTtl(seconds: number){
     if(Number.isFinite(seconds) && seconds >= 0){
       this.remoteCacheTtlMs = seconds * 1000;
+  this.log(`[ResourceService] setRemoteCacheTtlSeconds=${seconds}`);
     }
   }
 
   setRootCatalogOverride(root?: string){
     this.rootCatalogOverride = root && root.trim() ? root : undefined;
+  this.log(`[ResourceService] setRootCatalogOverride=${this.rootCatalogOverride || '(cleared)'}`);
   }
 
   clearRemoteCache(){ this.remoteCache.clear(); }
 
   async discoverResources(repository: Repository): Promise<Resource[]> {
     const resources: Resource[] = [];
+    const t0 = Date.now();
+    this.log(`[ResourceService] discoverResources start repo=${repository.name} catalog=${repository.catalogPath} rootOverride=${this.rootCatalogOverride || '(none)'} targetWs=${this.targetWorkspaceOverride || '(none)'} currentWs=${this.currentWorkspaceRoot || '(none)'} runtimeDir=${this.runtimeDirectoryName}`);
     // Unified root override mode (recursive, filename inference)
     if(this.rootCatalogOverride){
+      this.log(`[ResourceService] rootCatalogOverride mode: scanning ${this.rootCatalogOverride}`);
       const collected = await this.collectRecursive(this.rootCatalogOverride);
       for(const filePath of collected){
         const category = this.inferCategoryFromFilename(filePath);
         if(!category) continue;
-        const rel = path.join(CATEGORY_DIRS[category], path.basename(filePath));
-        resources.push({ id: `${repository.name}:${rel}`, relativePath: rel, absolutePath: filePath, category, targetSubdir: CATEGORY_DIRS[category], repository, state: ResourceState.INACTIVE, origin: 'catalog'});
+        // Preserve subfolder structure relative to the override root to avoid id collisions
+        let relWithinRoot = path.relative(this.rootCatalogOverride, filePath);
+        // Normalize separators to ensure stable ids across platforms
+        relWithinRoot = relWithinRoot.split(path.sep).join('/');
+        let rel = path.join(CATEGORY_DIRS[category], relWithinRoot);
+        // Ensure unique ID within this discovery batch
+        let candidateId = `${repository.name}:${rel}`;
+        if (resources.find(r => r.id === candidateId)) {
+          // If collision still occurs, prefix an incrementing counter before filename
+          const dirPart = path.dirname(rel);
+          const base = path.basename(rel);
+          let counter = 1;
+          while(resources.find(r => r.id === candidateId)){
+            const newBase = `${counter}_${base}`;
+            rel = dirPart === '.' ? newBase : path.join(dirPart, newBase);
+            candidateId = `${repository.name}:${rel}`;
+            counter++;
+          }
+        }
+        resources.push({ id: candidateId, relativePath: rel, absolutePath: filePath, category, targetSubdir: CATEGORY_DIRS[category], repository, state: ResourceState.INACTIVE, origin: 'catalog'});
       }
     } else {
     // Legacy per-category sources
@@ -93,7 +126,7 @@ export class ResourceService implements IResourceService {
             const rel = path.join(CATEGORY_DIRS[category], safeName);
             resources.push({ id: `${repository.name}:remote:${rel}`, relativePath: rel, absolutePath: abs, category, targetSubdir: CATEGORY_DIRS[category], repository, state: ResourceState.INACTIVE, origin: 'remote'});
           }
-        } catch { /* ignore remote failure */ }
+  } catch (e:any) { this.log(`[ResourceService] remote source failed for ${category}: ${e?.message||e}`); /* ignore remote failure */ }
         continue;
       }
       const baseDir = override ? this.resolveSourceDir(repository, override) : repository.catalogPath;
@@ -104,7 +137,8 @@ export class ResourceService implements IResourceService {
       } else {
         catDir = path.join(baseDir, CATEGORY_DIRS[category]);
       }
-      let entries = await this.safeList(catDir);
+  this.log(`[ResourceService] scan category=${category} dir=${catDir}`);
+  let entries = await this.safeList(catDir);
       // Secondary fallback: if no entries and override path was absolute and exists, try baseDir directly
       if(entries.length === 0 && override) {
         const st = await this.fileService.stat(baseDir).catch(()=> 'missing');
@@ -118,7 +152,11 @@ export class ResourceService implements IResourceService {
         const st = await this.fileService.stat(full);
         if(st !== 'file') continue;
         const rel = path.join(CATEGORY_DIRS[category], entry);
-        resources.push({ id: `${repository.name}:${rel}`, relativePath: rel, absolutePath: full, category, targetSubdir: CATEGORY_DIRS[category], repository, state: ResourceState.INACTIVE, origin: 'catalog'});
+        // Ensure unique ID for resources from different repos but with same relative path
+        const resourceId = `${repository.name}:${rel}`;
+        if (!resources.find(r => r.id === resourceId)) {
+          resources.push({ id: resourceId, relativePath: rel, absolutePath: full, category, targetSubdir: CATEGORY_DIRS[category], repository, state: ResourceState.INACTIVE, origin: 'catalog'});
+        }
       }
   }
   }
@@ -141,7 +179,7 @@ export class ResourceService implements IResourceService {
             }
             resources.push({ id: `${repository.name}:${relCandidate}`, relativePath: relCandidate, absolutePath: filePath, category, targetSubdir: CATEGORY_DIRS[category], repository, state: ResourceState.INACTIVE, origin: 'catalog'});
         }
-      } catch { /* ignore recursive scan failure */ }
+  } catch (e:any) { this.log(`[ResourceService] fallback recursive scan failed: ${e?.message||e}`); /* ignore recursive scan failure */ }
     }
     // User created runtime-only resources (exist in runtime but not catalog). We treat them as ACTIVE and origin 'user'
     const runtimeUser: Resource[] = [];
@@ -150,7 +188,7 @@ export class ResourceService implements IResourceService {
     const userAssetBaseDir = this.targetWorkspaceOverride || this.currentWorkspaceRoot || repository.rootPath;
     const userAssetRuntimePath = path.join(userAssetBaseDir, this.runtimeDirectoryName);
     
-    for(const category of Object.values(ResourceCategory)){
+  for(const category of Object.values(ResourceCategory)){
       const runtimeDir = path.join(userAssetRuntimePath, CATEGORY_DIRS[category]);
       const entries = await this.safeList(runtimeDir);
       for(const entry of entries){
@@ -168,8 +206,12 @@ export class ResourceService implements IResourceService {
     }
     resources.push(...runtimeUser);
     // Compute states for catalog resources (skip user ones)
-    for(const r of resources){ if(r.origin !== 'user'){ r.state = await this.getResourceState(r); } }
-    return resources;
+  for(const r of resources){ if(r.origin !== 'user'){ r.state = await this.getResourceState(r); } }
+  const dt = Date.now() - t0;
+  const byCat: Record<string, number> = {};
+  for(const r of resources){ byCat[r.category] = (byCat[r.category]||0)+1; }
+  this.log(`[ResourceService] discoverResources done ${dt}ms total=${resources.length} byCat=${JSON.stringify(byCat)}`);
+  return resources;
   }
 
   private resolveSourceDir(repository: Repository, overridePath: string){
@@ -238,7 +280,7 @@ export class ResourceService implements IResourceService {
           }
         }).on('error', reject);
         req.setTimeout(TIMEOUT_MS, ()=>{ try { req.destroy(new Error('Request timeout')); } catch {} });
-      } catch(e){ reject(e); }
+  } catch(e){ this.log(`[ResourceService] fetchRemote exception: ${e}`); reject(e); }
     });
   }
 
@@ -283,7 +325,7 @@ export class ResourceService implements IResourceService {
         const tgt = this.parseMcpConfig(tgtRaw);
         const status = this.compareMcpPresence(src, tgt);
         return status;
-      } catch { return ResourceState.INACTIVE; }
+  } catch (e:any) { this.log(`[ResourceService] getResourceState(MCP) error for ${resource.relativePath}: ${e?.message||e}`); return ResourceState.INACTIVE; }
     } else {
       const target = this.getTargetPath(resource);
       const exists = await this.fileService.pathExists(target);
@@ -295,7 +337,7 @@ export class ResourceService implements IResourceService {
         ]);
         if(srcContent === tgtContent) return ResourceState.ACTIVE;
         return ResourceState.MODIFIED;
-      } catch { return ResourceState.INACTIVE; }
+  } catch (e:any) { this.log(`[ResourceService] getResourceState error for ${resource.relativePath}: ${e?.message||e}`); return ResourceState.INACTIVE; }
     }
   }
 
@@ -305,16 +347,23 @@ export class ResourceService implements IResourceService {
       const base = this.targetWorkspaceOverride || this.currentWorkspaceRoot || resource.repository.rootPath;
       return path.join(base, '.vscode', 'mcp.json');
     }
+
+  const fileName = path.basename(resource.relativePath);
+  // Use plain filename for both catalog and user resources to match expected runtime layout
+  const targetFileName = fileName;
+
     if(this.targetWorkspaceOverride){
-      return path.join(this.targetWorkspaceOverride, this.runtimeDirectoryName, resource.targetSubdir, path.basename(resource.relativePath));
+      return path.join(this.targetWorkspaceOverride, this.runtimeDirectoryName, resource.targetSubdir, targetFileName);
     }
     // When no target workspace override is set, use current workspace root if available, otherwise fall back to repository root
     const base = this.currentWorkspaceRoot || resource.repository.rootPath;
-    return path.join(base, this.runtimeDirectoryName, resource.targetSubdir, path.basename(resource.relativePath));
+    return path.join(base, this.runtimeDirectoryName, resource.targetSubdir, targetFileName);
   }
 
   async activateResource(resource: Resource, _options?: ActivateOptions): Promise<OperationResult>{
+    this.log(`[ResourceService] activateResource start id=${resource.id} cat=${resource.category} origin=${resource.origin}`);
     if(resource.origin === 'user'){
+      this.log('[ResourceService] activateResource no-op for user resource');
       return { success:true, resource, message:'User resource already active' };
     }
     if(resource.category === ResourceCategory.MCP){
@@ -370,8 +419,10 @@ export class ResourceService implements IResourceService {
           }
         } catch { /* meta write best-effort */ }
         resource.state = await this.getResourceState(resource);
+        this.log(`[ResourceService] activateResource MCP merged target=${target} added=${JSON.stringify(addedNames)}`);
         return { success:true, resource, message:'MCP configuration merged' };
       } catch(e:any){
+        this.log(`[ResourceService] activateResource MCP error: ${e?.stack||e}`);
         return { success:false, resource, message:'MCP activation failed', details: e?.message };
       }
     } else {
@@ -379,14 +430,24 @@ export class ResourceService implements IResourceService {
       try {
         await this.fileService.copyFile(resource.absolutePath, target);
         resource.state = await this.getResourceState(resource);
+        this.log(`[ResourceService] activateResource copied ${resource.absolutePath} -> ${target} state=${resource.state}`);
+        // If this is a VS Code task, also merge into .vscode/tasks.json
+        if(resource.category === ResourceCategory.TASKS){
+          try {
+            const { added } = await this.mergeVsCodeTasks(resource);
+            this.log(`[ResourceService] tasks.json merge added=${added}`);
+          } catch(e:any){ this.log(`[ResourceService] tasks.json merge failed: ${e?.message||e}`); }
+        }
         return { success: true, resource, message: 'Activated' };
       } catch(e:any){
+        this.log(`[ResourceService] activateResource error for ${resource.relativePath}: ${e?.stack||e}`);
         return { success:false, resource, message:'Activation failed', details: e?.message };
       }
     }
   }
 
   async deactivateResource(resource: Resource): Promise<OperationResult>{
+    this.log(`[ResourceService] deactivateResource start id=${resource.id} cat=${resource.category} origin=${resource.origin}`);
     if(resource.origin === 'user'){
       return { success:false, resource, message:'Cannot deactivate user-created resource'};
     }
@@ -418,8 +479,10 @@ export class ResourceService implements IResourceService {
           }
         } catch { /* ignore meta update errors */ }
         resource.state = await this.getResourceState(resource);
+        this.log(`[ResourceService] deactivateResource MCP updated target=${target} removed=${namesToRemove.length}`);
         return { success:true, resource, message:'MCP entries removed (kept user entries)'};
       } catch(e:any){
+        this.log(`[ResourceService] deactivateResource MCP error: ${e?.stack||e}`);
         return { success:false, resource, message:'MCP deactivate failed', details: e?.message };
       }
     } else {
@@ -427,7 +490,12 @@ export class ResourceService implements IResourceService {
       // Prefer fileService delete if available (mock aware), fallback to fs.unlink
       const deleter: any = (this.fileService as any).deleteFile?.bind(this.fileService);
       if(deleter){ await deleter(target); } else { try { await fs.unlink(target);} catch {} }
+      // If task, also remove from .vscode/tasks.json based on metadata
+      if(resource.category === ResourceCategory.TASKS){
+        try { const removed = await this.removeVsCodeTasks(resource); this.log(`[ResourceService] tasks.json cleanup removed=${removed}`); } catch(e:any){ this.log(`[ResourceService] tasks.json cleanup failed: ${e?.message||e}`); }
+      }
       resource.state = await this.getResourceState(resource);
+      this.log(`[ResourceService] deactivateResource removed target=${target} state=${resource.state}`);
       return { success:true, resource, message:'Deactivated'};
     }
   }
@@ -443,9 +511,10 @@ export class ResourceService implements IResourceService {
       await (this.fileService as any).copyFile(resource.absolutePath, newPath);
       const deleter: any = (this.fileService as any).deleteFile?.bind(this.fileService);
       if(deleter) await deleter(resource.absolutePath); else await fs.unlink(resource.absolutePath);
-      resource.absolutePath = newPath;
+  resource.absolutePath = newPath;
       (resource as any).disabled = true;
       resource.state = ResourceState.INACTIVE;
+  this.log(`[ResourceService] disableUserResource ${resource.id} -> ${newPath}`);
       return { success:true, resource, message:'Disabled user resource' };
     } catch(e:any){ return { success:false, resource, message:'Disable failed', details: e?.message }; }
   }
@@ -460,9 +529,10 @@ export class ResourceService implements IResourceService {
       await (this.fileService as any).copyFile(resource.absolutePath, newPath);
       const deleter: any = (this.fileService as any).deleteFile?.bind(this.fileService);
       if(deleter) await deleter(resource.absolutePath); else await fs.unlink(resource.absolutePath);
-      resource.absolutePath = newPath;
+  resource.absolutePath = newPath;
       (resource as any).disabled = false;
       resource.state = ResourceState.ACTIVE;
+  this.log(`[ResourceService] enableUserResource ${resource.id} -> ${newPath}`);
       return { success:true, resource, message:'Enabled user resource' };
     } catch(e:any){ return { success:false, resource, message:'Enable failed', details: e?.message }; }
   }
@@ -473,6 +543,112 @@ export class ResourceService implements IResourceService {
     return s
       .replace(/(^|\s)\/\/.*$/gm, '$1')
       .replace(/\/\*[\s\S]*?\*\//g, '');
+  }
+  // --- VS Code tasks.json helpers ---
+  private getTasksJsonPath(resource: Resource): string {
+    const base = this.targetWorkspaceOverride || this.currentWorkspaceRoot || resource.repository.rootPath;
+    return path.join(base, '.vscode', 'tasks.json');
+  }
+  private getTasksMetaPath(resource: Resource): string {
+    return path.join(path.dirname(this.getTasksJsonPath(resource)), '.copilot-catalog-tasks-meta.json');
+  }
+  private normalizeTaskForKey(task: any): string {
+    if(task && typeof task === 'object' && typeof task.label === 'string' && task.label.trim()){
+      return `label:${task.label.trim()}`;
+    }
+    // Fallback to a stable JSON key
+    try {
+      const ordered = (obj: any): any => {
+        if(Array.isArray(obj)) return obj.map(ordered);
+        if(obj && typeof obj === 'object'){
+          return Object.keys(obj).sort().reduce((acc: any, k: string)=>{ acc[k]=ordered(obj[k]); return acc; }, {});
+        }
+        return obj;
+      };
+      return 'hash:' + JSON.stringify(ordered(task));
+    } catch { return 'hash:unknown'; }
+  }
+  private async readJsonFileSafe(p: string): Promise<any> {
+    try { const raw = await this.fileService.readFile(p); return JSON.parse(this.stripJsonComments(raw)||'{}'); } catch { return {}; }
+  }
+  private async writeJsonFilePretty(p: string, obj: any): Promise<void> {
+    await this.fileService.ensureDirectory(path.dirname(p));
+    await this.fileService.writeFile(p, JSON.stringify(obj, null, 2));
+  }
+  private async readTasksMeta(resource: Resource): Promise<any> { return this.readJsonFileSafe(this.getTasksMetaPath(resource)); }
+  private async writeTasksMeta(resource: Resource, obj: any): Promise<void> { await this.writeJsonFilePretty(this.getTasksMetaPath(resource), obj); }
+
+  private extractVsCodeTasks(obj: any): any[] {
+    if(!obj || typeof obj !== 'object') return [];
+    if(Array.isArray(obj.tasks)) return obj.tasks.filter((t:any)=> t && typeof t==='object');
+    if(obj.version && Array.isArray(obj.tasks)) return obj.tasks.filter((t:any)=> t && typeof t==='object');
+    if(obj.vscodeTask && typeof obj.vscodeTask==='object') return [obj.vscodeTask];
+    if(obj.vsCodeTask && typeof obj.vsCodeTask==='object') return [obj.vsCodeTask];
+    // A single task object (has type/label)
+    if(typeof obj.type==='string' || typeof obj.label==='string') return [obj];
+    return [];
+  }
+
+  private async mergeVsCodeTasks(resource: Resource): Promise<{added:number}> {
+    try {
+      const srcObj = await this.readJsonFileSafe(resource.absolutePath);
+      const newTasks = this.extractVsCodeTasks(srcObj);
+  this.log(`[ResourceService] mergeVsCodeTasks src=${path.basename(resource.absolutePath)} extracted=${newTasks.length}`);
+      if(newTasks.length === 0) return { added: 0 };
+      const tasksPath = this.getTasksJsonPath(resource);
+  this.log(`[ResourceService] mergeVsCodeTasks tasksPath=${tasksPath}`);
+      const tasksObj = await this.readJsonFileSafe(tasksPath);
+      const tasksArr: any[] = Array.isArray(tasksObj.tasks) ? tasksObj.tasks : [];
+      const existingKeys = new Set(tasksArr.map(t=> this.normalizeTaskForKey(t)));
+      const toAdd: any[] = [];
+      const addedKeys: string[] = [];
+      for(const t of newTasks){
+        const key = this.normalizeTaskForKey(t);
+        if(!existingKeys.has(key)){
+          toAdd.push(t);
+          addedKeys.push(key);
+          existingKeys.add(key);
+        }
+      }
+      if(toAdd.length === 0) return { added: 0 };
+      const updated = { version: '2.0.0', ...tasksObj, tasks: [...tasksArr, ...toAdd] };
+      await this.writeJsonFilePretty(tasksPath, updated);
+      this.log(`[ResourceService] mergeVsCodeTasks wrote tasks.json added=${toAdd.length}`);
+      // Update meta
+      const meta = await this.readTasksMeta(resource);
+      meta.byResourceId = meta.byResourceId || {};
+      const prev: string[] = Array.isArray(meta.byResourceId[resource.id]) ? meta.byResourceId[resource.id] : [];
+      meta.byResourceId[resource.id] = Array.from(new Set([...prev, ...addedKeys]));
+      await this.writeTasksMeta(resource, meta);
+      return { added: toAdd.length };
+    } catch (e:any) {
+      throw e;
+    }
+  }
+
+  private async removeVsCodeTasks(resource: Resource): Promise<number> {
+    const tasksPath = this.getTasksJsonPath(resource);
+    this.log(`[ResourceService] removeVsCodeTasks tasksPath=${tasksPath}`);
+    const tasksObj = await this.readJsonFileSafe(tasksPath);
+    const arr: any[] = Array.isArray(tasksObj.tasks) ? tasksObj.tasks : [];
+    if(arr.length === 0) return 0;
+    const meta = await this.readTasksMeta(resource);
+    const keys: string[] = Array.isArray(meta?.byResourceId?.[resource.id]) ? meta.byResourceId[resource.id] : [];
+    if(keys.length === 0) return 0;
+    const toRemove = new Set(keys);
+    const kept = arr.filter(t => !toRemove.has(this.normalizeTaskForKey(t)));
+    const removed = arr.length - kept.length;
+    if(removed > 0){
+      const updated = { version: tasksObj.version || '2.0.0', ...tasksObj, tasks: kept };
+      await this.writeJsonFilePretty(tasksPath, updated);
+      // Update meta
+      try {
+        const remaining = (meta.byResourceId[resource.id] || []).filter((k: string)=> !toRemove.has(k));
+        if(remaining.length) meta.byResourceId[resource.id] = remaining; else delete meta.byResourceId[resource.id];
+        await this.writeTasksMeta(resource, meta);
+      } catch { /* ignore meta update errors */ }
+    }
+    return removed;
   }
   private parseMcpConfig(raw: string): any {
     try {

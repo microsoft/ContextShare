@@ -134,6 +134,8 @@ export async function activate(context: vscode.ExtensionContext) {
 	try {
 		const fileService = new FileService();
 		const resourceService = new ResourceService(fileService);
+		// Wire service-level logger so core operations emit to the output channel/file
+		(resourceService as any).setLogger?.(log);
 		// Create tree providers for each category and overview
 		const overviewTree = new OverviewTreeProvider();
 		const chatmodesTree = new CategoryTreeProvider(ResourceCategory.CHATMODES);
@@ -151,12 +153,34 @@ export async function activate(context: vscode.ExtensionContext) {
 		let allResources: Resource[] = []; // All resources before filtering
 
 		const config = vscode.workspace.getConfiguration();
+		const resolveWorkspacePath = (input?: string): string | undefined => {
+			if(!input) return undefined;
+			let out = input;
+			const folders = vscode.workspace.workspaceFolders || [];
+			// ${workspaceFolder}
+			if(out.includes('${workspaceFolder}')){
+				const base = folders[0]?.uri.fsPath;
+				if(base){ out = out.replace(/\$\{workspaceFolder\}/g, base); }
+			}
+			// ${workspaceFolder:name}
+			out = out.replace(/\$\{workspaceFolder:([^}]+)\}/g, (_m, name) => {
+				const f = folders.find(f => f.name === name || f.uri.fsPath.endsWith('/'+name) || f.uri.fsPath.endsWith('\\'+name));
+				// Fallback to first workspace folder if named folder not found
+				return f ? f.uri.fsPath : (folders[0]?.uri.fsPath || _m);
+			});
+			// Normalize to absolute if still relative
+			if(!path.isAbsolute(out) && folders[0]){ out = path.resolve(folders[0].uri.fsPath, out); }
+			return out;
+		};
 		const runtimeDirName = config.get<string>('copilotCatalog.runtimeDirectory', '.github');
 		// Configure logging destination
 		enableFileLogging = !!config.get<boolean>('copilotCatalog.enableFileLogging', false);
 		logFilePath = path.join(context.globalStorageUri.fsPath, LOG_FILENAME);
-		// Respect target workspace override on startup
-		resourceService.setTargetWorkspaceOverride(config.get<string>('copilotCatalog.targetWorkspace'));
+	// Respect target workspace override on startup (expand ${workspaceFolder} tokens)
+	const rawTargetWs = config.get<string>('copilotCatalog.targetWorkspace');
+	const resolvedTargetWs = resolveWorkspacePath(rawTargetWs);
+	resourceService.setTargetWorkspaceOverride(resolvedTargetWs);
+	await log(`Resolved targetWorkspace: raw=${rawTargetWs || '(none)'} -> ${resolvedTargetWs || '(none)'} `);
 		// Set current workspace root as fallback for target workspace
 		const currentWorkspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 		if (currentWorkspaceRoot) {
@@ -248,7 +272,11 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 
 		async function loadResources() {
+			const t0 = Date.now();
 			allResources = currentRepo ? await discoverMultipleCatalogs(currentRepo) : [];
+			const preCounts: Record<string, number> = {};
+			for(const r of allResources){ preCounts[r.category] = (preCounts[r.category]||0)+1; }
+			await log(`loadResources: discovered total=${allResources.length} byCat=${JSON.stringify(preCounts)}`);
 
 			// Collapse duplicate entries (catalog + user runtime copy) by hiding the user-origin entry
 			// when a catalog/remote resource with the same category + basename is ACTIVE or MODIFIED.
@@ -279,6 +307,9 @@ export async function activate(context: vscode.ExtensionContext) {
 			const filteredResources = catalogFilter ? 
 				allResources.filter(r => r.catalogName === catalogFilter) : 
 				allResources;
+			const postCounts: Record<string, number> = {};
+			for(const r of filteredResources){ postCounts[r.category] = (postCounts[r.category]||0)+1; }
+			await log(`loadResources: filtered=${filteredResources.length} byCat=${JSON.stringify(postCounts)} filter=${catalogFilter||'(none)'} dt=${Date.now()-t0}ms`);
 			
 			// Update all tree providers with filtered resources
 			overviewTree.setRepository(currentRepo, filteredResources);
@@ -454,6 +485,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			vscode.commands.registerCommand('copilotCatalog.activate', async (item: any) => {
 				const res = pickResourceFromItem(item);
 				if (!res) return;
+				await log(`Command.activate start id=${res.id} cat=${res.category} origin=${(res as any).origin} state=${res.state}`);
 				// If activating over a modified runtime copy, warn user before overwriting
 				if(res.state === ResourceState.MODIFIED){
 					const runtimePath = resourceService.getTargetPath(res);
@@ -476,13 +508,15 @@ export async function activate(context: vscode.ExtensionContext) {
 						}
 					}
 				}
-				await resourceService.activateResource(res);
+				const result = await resourceService.activateResource(res);
+				await log(`Command.activate result success=${result.success} msg=${result.message} details=${result.details||''}`);
 				refreshAllTrees();
 				updateStatus();
 			}),
 			vscode.commands.registerCommand('copilotCatalog.deactivate', async (item: any) => {
 				const res = pickResourceFromItem(item);
 				if (!res) return;
+				await log(`Command.deactivate start id=${res.id} cat=${res.category} origin=${(res as any).origin} state=${res.state}`);
 				// If modified, offer preservation choices
 				if(res.state === ResourceState.MODIFIED){
 					const choice = await vscode.window.showWarningMessage('Resource has local modifications. How would you like to proceed?', { modal:true }, 'Discard Changes', 'Preserve as New', 'Cancel');
@@ -502,7 +536,8 @@ export async function activate(context: vscode.ExtensionContext) {
 						}
 					}
 				}
-				await resourceService.deactivateResource(res);
+				const result = await resourceService.deactivateResource(res);
+				await log(`Command.deactivate result success=${result.success} msg=${result.message} details=${result.details||''}`);
 				res.state = await resourceService.getResourceState(res);
 				refreshAllTrees();
 				updateStatus();
