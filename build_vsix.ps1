@@ -101,10 +101,11 @@ try {
     Copy-Item vsix/_rels -Destination vsix_build/_rels -Recurse -Force
   }
 
-  # Inject updated version, publisher, and id into vsix manifest from package.json
+  # Inject updated Identity (extension) version, publisher, and id into vsix manifest from package.json
   $manifestPath = "vsix_build/extension.vsixmanifest"
   $manifestContent = Get-Content $manifestPath -Raw
-  $manifestContent = [System.Text.RegularExpressions.Regex]::Replace($manifestContent, 'Version="[^"]+"', 'Version="' + $Version + '"')
+  # IMPORTANT: Do not overwrite the PackageManifest schema Version attribute; only update the Identity Version.
+  $manifestContent = [System.Text.RegularExpressions.Regex]::Replace($manifestContent, '<Identity([^>]+)Version="[^"]+"', '<Identity$1Version="' + $Version + '"')
 
   if($pkg.publisher){
     $pub = [string]$pkg.publisher
@@ -127,7 +128,8 @@ try {
     $srcManifestPath = "vsix/extension.vsixmanifest"
     if(Test-Path $srcManifestPath){
       $srcContent = Get-Content $srcManifestPath -Raw
-      $srcContent = [System.Text.RegularExpressions.Regex]::Replace($srcContent, 'Version="[^"]+"', 'Version="' + $Version + '"')
+  # Only update Identity Version in source manifest also
+  $srcContent = [System.Text.RegularExpressions.Regex]::Replace($srcContent, '<Identity([^>]+)Version="[^"]+"', '<Identity$1Version="' + $Version + '"')
       Set-Content -Path $srcManifestPath -Value $srcContent -NoNewline
     }
   } catch {

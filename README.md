@@ -63,33 +63,38 @@ example-catalog/
 ## 🛠️ Development
 
 ### Prerequisites
-## Package VSIX
-### PowerShell (Windows/macOS/Linux)
-- Node.js 18+ and npm
-# or Bash (macOS/Linux)
-bash ./build_vsix.sh --bump minor
-- Visual Studio Code 1.90.0+
+- Node.js 18+
+- VS Code 1.90.0+
 - TypeScript 5.4+
 
 ### Building from Source
-2. **Version Management**: Use the build scripts to bump and build; they now auto-sync `vsix/extension.vsixmanifest` from `package.json` to prevent mismatches
 ```bash
-4. **CI-friendly Packaging**: Do not edit `vsix/extension.vsixmanifest` manually; the build scripts update it based on `package.json`.
 git clone https://github.com/microsoft/vscode-copilot-catalog-manager.git
 cd vscode-copilot-catalog-manager
-
-# Install dependencies
 npm install
-
-# Build the extension
 npm run build
-
-# Run tests
 npm test
-
-# Package VSIX (Windows only)
-pwsh ./build_vsix.ps1
 ```
+
+### Version & Packaging
+We rely on the official VS Code packaging tool now. The manual build scripts were removed.
+
+```bash
+# Bump version (choose one)
+npm version patch
+npm version minor
+npm version major
+
+# Build (prepublish will re-run build)
+npx @vscode/vsce package
+
+# Install locally for testing
+code --install-extension copilot-catalog-manager-*.vsix --force
+```
+
+Notes:
+- Only edit `package.json` for version changes (Identity version auto-handled by vsce).
+- Avoid committing generated `.vsix` files unless needed for distribution outside Marketplace.
 
 ### Development Workflow
 

@@ -19,7 +19,7 @@ if(!manifestVersion){
 
 if(pkg.version !== manifestVersion){
   console.error(`ERROR: Version mismatch. package.json=${pkg.version}, manifest=${manifestVersion}`);
-  console.error('Hint: use build_vsix.ps1 or build_vsix.sh with --bump to auto-sync the manifest.');
+  console.error('Hint: run: npm version <patch|minor|major> then regenerate the VSIX with npx @vscode/vsce package');
   process.exit(1);
 }
 

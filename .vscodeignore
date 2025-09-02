@@ -1,0 +1,23 @@
+# Include only runtime necessities by excluding everything else
+src/
+test/
+**/*.test.*
+.github/
+.vscode/
+.gitignore
+SOFTWARE_ARCHITECTURE_SPECIFICATION.md
+TESTPLAN.md
+SETUP_GUIDE.md
+SUPPORT.md
+WELCOME.md
+CATALOG_DISPLAY_NAMES_EXAMPLE.md
+duplicate-remove-work-item.md
+example-catalog/
+scripts/
+debug-*.js
+*.vsix
+build/
+dist/test/
+build_vsix.ps1
+build_vsix.sh
+vsix/

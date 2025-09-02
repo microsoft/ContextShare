@@ -55,12 +55,8 @@
 		{
 			"label": "Build VSIX Package",
 			"type": "shell",
-			"command": "bash",
-			"args": ["./build_vsix.sh"],
-			"windows": {
-				"command": "pwsh",
-				"args": ["./build_vsix.ps1"]
-			},
+			"command": "npx",
+			"args": ["vsce", "package"],
 			"group": "build",
 			"dependsOn": "Build Extension",
 			"presentation": {
@@ -140,11 +136,6 @@
 			"group": "build"
 		},
 		{
-			"label": "Make Build Script Executable",
-			"type": "shell",
-			"command": "chmod +x ./build_vsix.sh"
-		},
-		{
 			"label": "Check VSIX Contents",
 			"type": "shell",
 			"command": "bash",
@@ -170,56 +161,23 @@
 		{
 			"label": "Bump Version - Patch",
 			"type": "shell",
-			"command": "bash",
-			"args": ["./build_vsix.sh", "--bump", "patch"],
-			"windows": {
-				"command": "pwsh",
-				"args": ["./build_vsix.ps1", "--bump", "patch"]
-			},
-			"group": "build",
-			"dependsOn": "Build Extension",
-			"presentation": {
-				"echo": true,
-				"reveal": "always",
-				"focus": false,
-				"panel": "shared"
-			}
+			"command": "npm",
+			"args": ["version", "patch"],
+			"group": "build"
 		},
 		{
 			"label": "Bump Version - Minor",
 			"type": "shell",
-			"command": "bash",
-			"args": ["./build_vsix.sh", "--bump", "minor"],
-			"windows": {
-				"command": "pwsh",
-				"args": ["./build_vsix.ps1", "--bump", "minor"]
-			},
-			"group": "build",
-			"dependsOn": "Build Extension",
-			"presentation": {
-				"echo": true,
-				"reveal": "always",
-				"focus": false,
-				"panel": "shared"
-			}
+			"command": "npm",
+			"args": ["version", "minor"],
+			"group": "build"
 		},
 		{
 			"label": "Bump Version - Major",
 			"type": "shell",
-			"command": "bash",
-			"args": ["./build_vsix.sh", "--bump", "major"],
-			"windows": {
-				"command": "pwsh",
-				"args": ["./build_vsix.ps1", "--bump", "major"]
-			},
-			"group": "build",
-			"dependsOn": "Build Extension",
-			"presentation": {
-				"echo": true,
-				"reveal": "always",
-				"focus": false,
-				"panel": "shared"
-			}
+			"command": "npm",
+			"args": ["version", "major"],
+			"group": "build"
 		},
 		{
 			"label": "Install Latest VSIX",

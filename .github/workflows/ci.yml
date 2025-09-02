@@ -64,8 +64,7 @@ jobs:
       run: npm test
 
     - name: Package VSIX
-      run: pwsh -File ./build_vsix.ps1
-      shell: pwsh
+      run: npx @vscode/vsce package
 
     - name: Upload VSIX artifact
       uses: actions/upload-artifact@v4
