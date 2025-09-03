@@ -1,0 +1,12 @@
+{
+  "name": "Task: Catalog Setup Walkthrough",
+  "description": "Step-by-step guide to initialize and use the Copilot Catalog (setup-only).",
+  "steps": [
+    "Open the Copilot Catalog view and use the Dev menu to Create Template Catalog.",
+    "Place the catalog in your desired folder and name it (default: copilot_catalog).",
+    "Configure catalog directories using Dev menu → Configure Settings, then add catalog directories.",
+    "Use Activate on a resource to copy it to your runtime (e.g., .github).",
+    "Create/apply a Hat to quickly activate a set of resources.",
+    "Remember: you own security reviews, repo layout, version bumps, and publishing."
+  ]
+}
