@@ -22,7 +22,7 @@ A Visual Studio Code extension that enables teams to manage and share AI assista
 
 ## 🚀 Quick Start
 
-<img src="resources/ext-screenshot.png" alt="ContextHub extension screenshot" align="right" width="320" style="margin:0 0 12px 16px;" />
+
 
 ### Installation
 
