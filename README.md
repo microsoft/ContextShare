@@ -133,10 +133,23 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🔒 Security
 
-If you discover a security issue, please do NOT open a public issue immediately. Instead:
-1. Reproduce and collect minimal details.
-2. Contact the maintainer privately (e.g. via the email listed in the repository profile) OR temporarily make a private draft issue.
-3. After a fix is prepared and released, disclosure can be coordinated.
+Security is a top priority for this project. We follow Microsoft's security guidelines and best practices.
+
+### Security Resources
+- [Security Policy](./SECURITY.md) - How to report security vulnerabilities
+- [Security Guidelines](./SECURITY_GUIDELINES.md) - Development security practices  
+- [Third Party Licenses](./THIRD_PARTY_LICENSES.md) - License compliance information
+- [Export Control](./EXPORT_CONTROL.md) - Export control compliance
+
+### Security Features
+- Automated security vulnerability scanning
+- License compliance checking  
+- Secret detection in CI/CD
+- HTTPS-only remote catalog sources
+- Input validation and path sanitization
+
+### Reporting Security Issues
+If you discover a security issue, please do NOT open a public issue. Instead, follow our [Security Policy](SECURITY.md) for responsible disclosure.
 
 ## 📞 Support
 

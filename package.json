@@ -167,7 +167,7 @@
         {
           "id": "copilotCatalogOptions",
           "name": "Options",
-            "icon": "$(gear)"
+          "icon": "$(gear)"
         },
         {
           "id": "copilotCatalogOverview",
@@ -418,13 +418,19 @@
     "test": "node dist/test/resourceService.test.js && node dist/test/treeIcons.test.js && node dist/test/naming.test.js && node dist/test/mcpMerge.test.js && node dist/test/hats.test.js && node dist/test/commandsRegistered.test.js && node dist/test/display.test.js && node dist/test/catalogDisplayName.test.js && node dist/test/repositoryDiscovery.test.js && node dist/test/targetPath.test.js && node dist/test/workspaceConfiguration.test.js && node dist/test/resourceActivation.test.js",
     "test:all": "node dist/test/resourceService.test.js && node dist/test/treeIcons.test.js && node dist/test/naming.test.js && node dist/test/mcpMerge.test.js && node dist/test/hats.test.js && node dist/test/commandsRegistered.test.js && node dist/test/display.test.js && node dist/test/catalogDisplayName.test.js && node dist/test/repositoryDiscovery.test.js && node dist/test/targetPath.test.js && node dist/test/workspaceConfiguration.test.js && node dist/test/resourceActivation.test.js",
     "test:edge-cases": "node dist/test/repositoryDiscovery.test.js && node dist/test/targetPath.test.js && node dist/test/workspaceConfiguration.test.js && node dist/test/resourceActivation.test.js",
-    "package:vsix": "npx @vscode/vsce package"
+    "package:vsix": "npx @vscode/vsce package",
+    "security:audit": "npm audit --audit-level=moderate",
+    "security:audit:fix": "npm audit fix",
+    "security:check": "npm run security:audit && npm run security:scan",
+    "security:scan": "node scripts/security-scan.js",
+    "license:check": "node scripts/check-licenses.js",
+    "compliance:check": "npm run security:check && npm run license:check"
   },
   "devDependencies": {
     "@types/node": "^20.14.10",
     "@types/vscode": "^1.90.0",
     "@vscode/vsce": "^3.0.0",
-    "esbuild": "^0.21.5",
+    "esbuild": "^0.25.9",
     "typescript": "^5.4.0"
   }
 }

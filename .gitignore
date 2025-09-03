@@ -444,3 +444,69 @@ FodyWeavers.xsd
 # Allow workflows
 !.github/workflows/
 .vscode/settings.json
+
+# Security: Prevent accidental commits of sensitive files
+*.key
+*.pem
+*.p12
+*.p8
+*.cer
+*.crt
+*.der
+*id_rsa*
+*id_dsa*
+*id_ecdsa*
+*id_ed25519*
+.secret
+.secrets
+secrets.*
+.credentials
+credentials.*
+.auth
+auth.*
+*.token
+*.tokens
+.password
+.passwords
+*password*
+*secret*
+*credential*
+*api?key*
+.env.*
+.env.*.local
+.env.*.production
+.env.*.development
+.env.*.test
+config/secrets.*
+config/credentials.*
+/tmp/
+.tmp/
+temp/
+.temp/
+
+# Azure/Microsoft specific security files
+.azure/
+*.azureauth
+*.publishsettings
+*.subscription
+service-principal.json
+app-registration.json
+
+# Backup files that might contain sensitive data
+*.backup
+*.bak
+*.old
+*.orig
+*.save
+
+# IDE/Editor files that might leak information  
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files that might leak info
+.DS_Store?
+ehthumbs.db
+Thumbs.db

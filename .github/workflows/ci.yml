@@ -27,6 +27,15 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
+    - name: Security audit
+      run: npm audit --audit-level=high
+
+    - name: Check for known vulnerabilities
+      run: npm audit --parseable | grep -i "critical\|high" && exit 1 || echo "No critical/high vulnerabilities found"
+
+    - name: License compliance check
+      run: npm run license:check
+
     - name: Lint code
       run: npm run lint || echo "Lint script not found, skipping"
 
