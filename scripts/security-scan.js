@@ -67,14 +67,43 @@ function scanFile(filePath) {
         const lines = content.split('\n');
         const ext = path.extname(filePath);
         
+        let inBlockComment = false;
         for (let lineNum = 0; lineNum < lines.length; lineNum++) {
             let line = lines[lineNum];
             
             // Skip comment lines in JS/TS files
             if (['.js', '.ts'].includes(ext)) {
                 const trimmed = line.trim();
-                if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) {
+                // Handle block comments
+                if (inBlockComment) {
+                    if (trimmed.includes('*/')) {
+                        inBlockComment = false;
+                        // If there's code after the block comment ends, process it
+                        const after = trimmed.split('*/')[1];
+                        if (!after || after.trim() === '') continue;
+                        line = after;
+                    } else {
+                        continue;
+                    }
+                }
+                if (trimmed.startsWith('//')) {
                     continue;
+                }
+                // Start of block comment
+                if (trimmed.includes('/*')) {
+                    // If block comment ends on same line, skip only the comment part
+                    if (trimmed.includes('*/')) {
+                        const before = trimmed.split('/*')[0];
+                        const after = trimmed.split('*/')[1];
+                        if (!before && (!after || after.trim() === '')) continue;
+                        line = before + (after ? after : '');
+                    } else {
+                        inBlockComment = true;
+                        // If there's code before the block comment, process it
+                        const before = trimmed.split('/*')[0];
+                        if (!before || before.trim() === '') continue;
+                        line = before;
+                    }
                 }
                 // Remove inline comments
                 const commentIndex = line.indexOf('//');
