@@ -17,7 +17,7 @@ const SECRET_PATTERNS = [
     /['"](AKIA[0-9A-Z]{16})['"]/g,  // AWS Access Keys
     /['"](gh[ps]_[A-Za-z0-9_]{36,255})['"]/g,  // GitHub tokens
     /['"](xox[baprs]-[0-9a-zA-Z-]{10,72})['"]/g,  // Slack tokens
-    /['"]\b[A-Za-z0-9+/]{40,}={0,2}['"]/g,  // Base64 encoded (40+ chars)
+    /['"][A-Za-z0-9+/]{40,}={0,2}['"]/g,  // Base64 encoded (40+ chars)
     /password\s*[:=]\s*['"]\w{8,}['"]/gi,  // password = "something"
     /secret\s*[:=]\s*['"]\w{8,}['"]/gi,  // secret = "something"
     /token\s*[:=]\s*['"]\w{8,}['"]/gi,  // token = "something"
