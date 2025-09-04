@@ -13,7 +13,7 @@ const path = require('path');
 // Patterns that might indicate hardcoded secrets
 const SECRET_PATTERNS = [
     /['"](sk-[a-zA-Z0-9]{48,})['"]/g,  // OpenAI API keys
-    /['"](AIza[0-9A-Za-z\\-_]{35})['"]/g,  // Google API keys
+    /['"](AIza[0-9A-Za-z\-_]{35})['"]/g,  // Google API keys
     /['"](AKIA[0-9A-Z]{16})['"]/g,  // AWS Access Keys
     /['"](gh[ps]_[A-Za-z0-9_]{36,255})['"]/g,  // GitHub tokens
     /['"](xox[baprs]-[0-9a-zA-Z-]{10,72})['"]/g,  // Slack tokens
