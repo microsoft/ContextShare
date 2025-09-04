@@ -31,7 +31,7 @@ jobs:
       run: npm audit --audit-level=high
 
     - name: Check for known vulnerabilities
-      run: npm audit --parseable | grep -i "critical\|high" && exit 1 || echo "No critical/high vulnerabilities found"
+      run: (npm audit --parseable | grep -i "critical\|high") && exit 1 || echo "No critical/high vulnerabilities found"
 
     - name: License compliance check
       run: npm run license:check
