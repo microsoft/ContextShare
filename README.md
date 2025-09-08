@@ -40,7 +40,7 @@ State logic: ACTIVE resources are copied to runtime; MODIFIED indicates the runt
 ## 🚀 Quick Start
 
 ### Installation
-Install from the VS Code Marketplace: [ContextShare](https://marketplace.visualstudio.com/items?itemName=jonathan-nafta.contextshare)
+Install from the VS Code Marketplace: [ContextShare](https://marketplace.visualstudio.com/items?itemName=contextshare.contextshare)
 
 ### Use in 5 Steps
 1. Open the ContextShare Activity Bar view.
