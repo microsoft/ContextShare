@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <!-- Corrected 'visualstudio' spelling in Relationship Type URIs -->
+  <Relationship Type="http://schemas.microsoft.com/visualstudio/2010/06/extension.vsixmanifest" Target="/extension.vsixmanifest" Id="VsixManifest" />
+  <Relationship Type="http://schemas.microsoft.com/visualstudio/2010/06/manifest" Target="/extension/package.json" Id="VsCodeManifest" />
+</Relationships>
