@@ -2,7 +2,7 @@
   "name": "PromptVault",
   "displayName": "PromptVault",
   "description": "Manage AI assistant catalog resources (chat modes, instructions, prompts, tasks, MCP) across multiple repositories inside VS Code.",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "publisher": "jonathan-nafta",
   "engines": {
     "vscode": "^1.90.0"

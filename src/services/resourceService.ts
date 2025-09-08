@@ -5,7 +5,7 @@ import { IncomingMessage } from 'http';
 import * as https from 'https';
 import * as path from 'path';
 import { ActivateOptions, IFileService, IResourceService, OperationResult, Repository, Resource, ResourceCategory, ResourceState } from '../models';
-import { isSafeRelativeEntry, sanitizeFilename } from '../utils/security';
+import { isSafeRelativeEntry, sanitizeFilename, isValidHttpsUrl, sanitizeErrorMessage, validateMcpConfig, validateTaskConfig } from '../utils/security';
 
 const CATEGORY_DIRS: Record<ResourceCategory,string> = { chatmodes:'chatmodes', instructions:'instructions', prompts:'prompts', tasks:'tasks', mcp:'mcp'};
 
@@ -13,6 +13,8 @@ export class ResourceService implements IResourceService {
   private sourceOverrides: Partial<Record<ResourceCategory,string>> = {};
   private remoteCacheTtlMs = 5 * 60 * 1000; // 5 minutes default
   private remoteCache: Map<string,{timestamp:number; content:string}> = new Map();
+  private remoteCacheMaxSize = 50; // Maximum number of cached entries
+  private remoteCacheMaxEntrySize = 1000000; // 1MB per entry
   private rootCatalogOverride?: string;
   private targetWorkspaceOverride?: string;
   private currentWorkspaceRoot?: string;
@@ -22,7 +24,13 @@ export class ResourceService implements IResourceService {
 
   // Optional logger injected by host extension
   setLogger(fn?: (msg: string) => void){ this.logger = fn; }
-  private log(msg: string){ try { this.logger?.(msg); } catch { /* ignore logging errors */ } }
+  private log(msg: string){ 
+    try { 
+      // Sanitize log messages to prevent information disclosure
+      const sanitized = sanitizeErrorMessage(msg);
+      this.logger?.(sanitized); 
+    } catch { /* ignore logging errors */ } 
+  }
 
   setTargetWorkspaceOverride(path?: string){
     this.targetWorkspaceOverride = path && path.trim() ? path : undefined;
@@ -57,7 +65,28 @@ export class ResourceService implements IResourceService {
   this.log(`[ResourceService] setRootCatalogOverride=${this.rootCatalogOverride || '(cleared)'}`);
   }
 
-  clearRemoteCache(){ this.remoteCache.clear(); }
+  clearRemoteCache(){ 
+    this.remoteCache.clear(); 
+  }
+
+  private evictOldCacheEntries(){
+    const now = Date.now();
+    // Remove expired entries
+    for(const [key, entry] of this.remoteCache.entries()){
+      if((now - entry.timestamp) >= this.remoteCacheTtlMs){
+        this.remoteCache.delete(key);
+      }
+    }
+    // If still over size limit, remove oldest entries
+    if(this.remoteCache.size > this.remoteCacheMaxSize){
+      const entries = Array.from(this.remoteCache.entries())
+        .sort((a, b) => a[1].timestamp - b[1].timestamp);
+      const toRemove = entries.slice(0, entries.length - this.remoteCacheMaxSize);
+      for(const [key] of toRemove){
+        this.remoteCache.delete(key);
+      }
+    }
+  }
 
   async discoverResources(repository: Repository): Promise<Resource[]> {
     const resources: Resource[] = [];
@@ -96,9 +125,9 @@ export class ResourceService implements IResourceService {
     for(const category of Object.values(ResourceCategory)){
       const override = this.sourceOverrides[category];
       if(override && /^https?:\/\//i.test(override)){
-        // Enforce HTTPS-only for remote sources
-        if(!/^https:\/\//i.test(override)) {
-          // Skip insecure HTTP sources
+        // Enhanced HTTPS-only validation for remote sources
+        if(!isValidHttpsUrl(override)) {
+          this.log(`[ResourceService] Skipping invalid or insecure URL: ${override}`);
           continue;
         }
         const isDir = override.endsWith('/');
@@ -128,7 +157,7 @@ export class ResourceService implements IResourceService {
             const rel = path.join(CATEGORY_DIRS[category], safeName);
             resources.push({ id: `${repository.name}:remote:${rel}`, relativePath: rel, absolutePath: abs, category, targetSubdir: CATEGORY_DIRS[category], repository, state: ResourceState.INACTIVE, origin: 'remote'});
           }
-  } catch (e:any) { this.log(`[ResourceService] remote source failed for ${category}: ${e?.message||e}`); /* ignore remote failure */ }
+          } catch (e:any) { this.log(`[ResourceService] remote source failed for ${category}: ${sanitizeErrorMessage(e)}`); /* ignore remote failure */ }
         continue;
       }
       const baseDir = override ? this.resolveSourceDir(repository, override) : repository.catalogPath;
@@ -181,7 +210,7 @@ export class ResourceService implements IResourceService {
             }
             resources.push({ id: `${repository.name}:${relCandidate}`, relativePath: relCandidate, absolutePath: filePath, category, targetSubdir: CATEGORY_DIRS[category], repository, state: ResourceState.INACTIVE, origin: 'catalog'});
         }
-  } catch (e:any) { this.log(`[ResourceService] fallback recursive scan failed: ${e?.message||e}`); /* ignore recursive scan failure */ }
+  } catch (e:any) { this.log(`[ResourceService] fallback recursive scan failed: ${sanitizeErrorMessage(e)}`); /* ignore recursive scan failure */ }
     }
     // User created runtime-only resources (exist in runtime but not catalog). We treat them as ACTIVE and origin 'user'
     const runtimeUser: Resource[] = [];
@@ -262,53 +291,121 @@ export class ResourceService implements IResourceService {
   }
 
   private fetchRemote(url: string): Promise<string>{
-    // HTTPS-only fetch with timeout and max size limits
+    // Safer HTTPS-only fetch with enhanced security measures
     const TIMEOUT_MS = 8000;
     const MAX_BYTES = 1_000_000; // 1 MB safety limit
-    return new Promise((resolve, reject)=>{
+    const MAX_REDIRECTS = 3;
+    
+    return this.fetchRemoteWithRedirects(url, MAX_REDIRECTS, MAX_BYTES, TIMEOUT_MS);
+  }
+
+  private fetchRemoteWithRedirects(url: string, maxRedirects: number, maxBytes: number, timeoutMs: number): Promise<string> {
+    return new Promise((resolve, reject) => {
       try {
-        if(!/^https:\/\//i.test(url)) { reject(new Error('Only HTTPS URLs are allowed')); return; }
-        const req = https.get(url, (res: IncomingMessage)=>{
-          if(res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location){
-            const loc = res.headers.location as string;
-            if(loc && /^https:\/\//i.test(loc)){
-              const req2 = https.get(loc, (r2: IncomingMessage)=>{ this.collectResponse(r2, resolve, reject, MAX_BYTES); }).on('error', reject);
-              req2.setTimeout(TIMEOUT_MS, ()=>{ try { req2.destroy(new Error('Request timeout')); } catch {} });
-            } else {
-              reject(new Error('Redirected to non-HTTPS location'));
-            }
-          } else {
-            this.collectResponse(res, resolve, reject, MAX_BYTES);
+        if (!isValidHttpsUrl(url)) { 
+          reject(new Error('Invalid or insecure URL provided')); 
+          return; 
+        }
+
+        const req = https.get(url, {
+          timeout: timeoutMs,
+          headers: {
+            'User-Agent': 'VSCode-PromptVault/1.0'
           }
-        }).on('error', reject);
-        req.setTimeout(TIMEOUT_MS, ()=>{ try { req.destroy(new Error('Request timeout')); } catch {} });
-  } catch(e){ this.log(`[ResourceService] fetchRemote exception: ${e}`); reject(e); }
+        }, (res: IncomingMessage) => {
+          // Handle redirects more safely
+          if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+            if (maxRedirects <= 0) {
+              reject(new Error('Too many redirects'));
+              return;
+            }
+            
+            const location = res.headers.location as string;
+            if (!location || !isValidHttpsUrl(location)) {
+              reject(new Error('Invalid redirect location'));
+              return;
+            }
+            
+            // Recursively handle redirect with decremented counter
+            this.fetchRemoteWithRedirects(location, maxRedirects - 1, maxBytes, timeoutMs)
+              .then(resolve)
+              .catch(reject);
+            return;
+          }
+          
+          this.collectResponse(res, resolve, reject, maxBytes);
+        });
+
+        req.on('error', (err) => {
+          reject(new Error(`Network error: ${sanitizeErrorMessage(err)}`));
+        });
+        
+        req.on('timeout', () => {
+          req.destroy();
+          reject(new Error('Request timeout'));
+        });
+
+      } catch (e) { 
+        this.log(`[ResourceService] fetchRemote exception: ${sanitizeErrorMessage(e)}`); 
+        reject(new Error(`Request failed: ${sanitizeErrorMessage(e)}`)); 
+      }
     });
   }
 
   private async fetchRemoteCached(url: string): Promise<string>{
+    // Evict old entries before checking cache
+    this.evictOldCacheEntries();
+    
     const entry = this.remoteCache.get(url);
     const now = Date.now();
-    if(entry && (now - entry.timestamp) < this.remoteCacheTtlMs){ return entry.content; }
+    if(entry && (now - entry.timestamp) < this.remoteCacheTtlMs){ 
+      return entry.content; 
+    }
+    
     const content = await this.fetchRemote(url);
-    this.remoteCache.set(url, { timestamp: now, content });
+    
+    // Check content size before caching
+    if(content.length <= this.remoteCacheMaxEntrySize){
+      this.remoteCache.set(url, { timestamp: now, content });
+      // Evict again if we're over the limit
+      this.evictOldCacheEntries();
+    }
+    
     return content;
   }
 
   private collectResponse(res: IncomingMessage, resolve: (v:string)=>void, reject:(e:any)=>void, maxBytes: number){
-    if(res.statusCode !== 200){ reject(new Error(`HTTP ${res.statusCode}`)); return; }
+    if(res.statusCode !== 200){ 
+      reject(new Error(`HTTP ${res.statusCode}`)); 
+      return; 
+    }
+    
     const chunks: Buffer[] = [];
     let total = 0;
-    res.on('data',(c: Buffer)=>{
-      total += c.length;
+    
+    res.on('data',(chunk: Buffer)=>{
+      total += chunk.length;
       if(total > maxBytes){
-        try { (res as any).destroy?.(new Error('Response too large')); } catch {}
+        try { 
+          res.destroy(); 
+        } catch {}
         reject(new Error('Response too large'));
         return;
       }
-      chunks.push(c);
+      chunks.push(chunk);
     });
-    res.on('end',()=>resolve(Buffer.concat(chunks).toString('utf8')));
+    
+    res.on('end',()=>{
+      try {
+        resolve(Buffer.concat(chunks).toString('utf8'));
+      } catch (e) {
+        reject(new Error(`Failed to decode response: ${sanitizeErrorMessage(e)}`));
+      }
+    });
+    
+    (res as any).on('error', (err: any) => {
+      reject(new Error(`Response error: ${sanitizeErrorMessage(err)}`));
+    });
   }
 
   async getResourceState(resource: Resource): Promise<ResourceState>{
@@ -327,7 +424,7 @@ export class ResourceService implements IResourceService {
         const tgt = this.parseMcpConfig(tgtRaw);
         const status = this.compareMcpPresence(src, tgt);
         return status;
-  } catch (e:any) { this.log(`[ResourceService] getResourceState(MCP) error for ${resource.relativePath}: ${e?.message||e}`); return ResourceState.INACTIVE; }
+  } catch (e:any) { this.log(`[ResourceService] getResourceState(MCP) error for ${resource.relativePath}: ${sanitizeErrorMessage(e)}`); return ResourceState.INACTIVE; }
     } else {
       const target = this.getTargetPath(resource);
       const exists = await this.fileService.pathExists(target);
@@ -339,7 +436,7 @@ export class ResourceService implements IResourceService {
         ]);
         if(srcContent === tgtContent) return ResourceState.ACTIVE;
         return ResourceState.MODIFIED;
-  } catch (e:any) { this.log(`[ResourceService] getResourceState error for ${resource.relativePath}: ${e?.message||e}`); return ResourceState.INACTIVE; }
+  } catch (e:any) { this.log(`[ResourceService] getResourceState error for ${resource.relativePath}: ${sanitizeErrorMessage(e)}`); return ResourceState.INACTIVE; }
     }
   }
 
@@ -424,8 +521,8 @@ export class ResourceService implements IResourceService {
         this.log(`[ResourceService] activateResource MCP merged target=${target} added=${JSON.stringify(addedNames)}`);
         return { success:true, resource, message:'MCP configuration merged' };
       } catch(e:any){
-        this.log(`[ResourceService] activateResource MCP error: ${e?.stack||e}`);
-        return { success:false, resource, message:'MCP activation failed', details: e?.message };
+        this.log(`[ResourceService] activateResource MCP error: ${sanitizeErrorMessage(e)}`);
+        return { success:false, resource, message:'MCP activation failed', details: sanitizeErrorMessage(e) };
       }
     } else {
       const target = this.getTargetPath(resource);
@@ -438,12 +535,12 @@ export class ResourceService implements IResourceService {
           try {
             const { added } = await this.mergeVsCodeTasks(resource);
             this.log(`[ResourceService] tasks.json merge added=${added}`);
-          } catch(e:any){ this.log(`[ResourceService] tasks.json merge failed: ${e?.message||e}`); }
+          } catch(e:any){ this.log(`[ResourceService] tasks.json merge failed: ${sanitizeErrorMessage(e)}`); }
         }
         return { success: true, resource, message: 'Activated' };
       } catch(e:any){
-        this.log(`[ResourceService] activateResource error for ${resource.relativePath}: ${e?.stack||e}`);
-        return { success:false, resource, message:'Activation failed', details: e?.message };
+        this.log(`[ResourceService] activateResource error for ${resource.relativePath}: ${sanitizeErrorMessage(e)}`);
+        return { success:false, resource, message:'Activation failed', details: sanitizeErrorMessage(e) };
       }
     }
   }
@@ -484,8 +581,8 @@ export class ResourceService implements IResourceService {
         this.log(`[ResourceService] deactivateResource MCP updated target=${target} removed=${namesToRemove.length}`);
         return { success:true, resource, message:'MCP entries removed (kept user entries)'};
       } catch(e:any){
-        this.log(`[ResourceService] deactivateResource MCP error: ${e?.stack||e}`);
-        return { success:false, resource, message:'MCP deactivate failed', details: e?.message };
+        this.log(`[ResourceService] deactivateResource MCP error: ${sanitizeErrorMessage(e)}`);
+        return { success:false, resource, message:'MCP deactivate failed', details: sanitizeErrorMessage(e) };
       }
     } else {
       const target = this.getTargetPath(resource);
@@ -494,7 +591,7 @@ export class ResourceService implements IResourceService {
       if(deleter){ await deleter(target); } else { try { await fs.unlink(target);} catch {} }
       // If task, also remove from .vscode/tasks.json based on metadata
       if(resource.category === ResourceCategory.TASKS){
-        try { const removed = await this.removeVsCodeTasks(resource); this.log(`[ResourceService] tasks.json cleanup removed=${removed}`); } catch(e:any){ this.log(`[ResourceService] tasks.json cleanup failed: ${e?.message||e}`); }
+        try { const removed = await this.removeVsCodeTasks(resource); this.log(`[ResourceService] tasks.json cleanup removed=${removed}`); } catch(e:any){ this.log(`[ResourceService] tasks.json cleanup failed: ${sanitizeErrorMessage(e)}`); }
       }
       resource.state = await this.getResourceState(resource);
       this.log(`[ResourceService] deactivateResource removed target=${target} state=${resource.state}`);
@@ -502,41 +599,96 @@ export class ResourceService implements IResourceService {
     }
   }
 
-  // -- User asset enable/disable by renaming file extension
+  // -- User asset enable/disable with atomic operations
   async disableUserResource(resource: Resource): Promise<OperationResult>{
     if(resource.origin !== 'user') return { success:false, resource, message:'Only user resources can be disabled' };
     if(resource.disabled) return { success:true, resource, message:'Already disabled' };
+    
     try {
       const dir = path.dirname(resource.absolutePath);
       const base = path.basename(resource.absolutePath);
       const newPath = path.join(dir, base + '.disabled');
-      await (this.fileService as any).copyFile(resource.absolutePath, newPath);
-      const deleter: any = (this.fileService as any).deleteFile?.bind(this.fileService);
-      if(deleter) await deleter(resource.absolutePath); else await fs.unlink(resource.absolutePath);
-  resource.absolutePath = newPath;
-      (resource as any).disabled = true;
-      resource.state = ResourceState.INACTIVE;
-  this.log(`[ResourceService] disableUserResource ${resource.id} -> ${newPath}`);
-      return { success:true, resource, message:'Disabled user resource' };
-    } catch(e:any){ return { success:false, resource, message:'Disable failed', details: e?.message }; }
+      const tempPath = newPath + '.tmp';
+      
+      // Atomic operation: copy to temp, then rename
+      await (this.fileService as any).copyFile(resource.absolutePath, tempPath);
+      
+      try {
+        // Try to rename temp to final name
+        if(typeof (this.fileService as any).renameFile === 'function') {
+          await (this.fileService as any).renameFile(tempPath, newPath);
+        } else {
+          // Fallback: copy and delete (less atomic but works)
+          await (this.fileService as any).copyFile(tempPath, newPath);
+          const deleter: any = (this.fileService as any).deleteFile?.bind(this.fileService);
+          if(deleter) await deleter(tempPath); else await fs.unlink(tempPath);
+        }
+        
+        // Delete original only after successful copy/rename
+        const deleter: any = (this.fileService as any).deleteFile?.bind(this.fileService);
+        if(deleter) await deleter(resource.absolutePath); else await fs.unlink(resource.absolutePath);
+        
+        resource.absolutePath = newPath;
+        (resource as any).disabled = true;
+        resource.state = ResourceState.INACTIVE;
+        this.log(`[ResourceService] disableUserResource ${resource.id} -> ${newPath}`);
+        return { success:true, resource, message:'Disabled user resource' };
+        
+      } catch (renameError) {
+        // Cleanup temp file on failure
+        try {
+          const deleter: any = (this.fileService as any).deleteFile?.bind(this.fileService);
+          if(deleter) await deleter(tempPath); else await fs.unlink(tempPath);
+        } catch {}
+        throw renameError;
+      }
+    } catch(e:any){ return { success:false, resource, message:'Disable failed', details: sanitizeErrorMessage(e) }; }
   }
+  
   async enableUserResource(resource: Resource): Promise<OperationResult>{
     if(resource.origin !== 'user') return { success:false, resource, message:'Only user resources can be enabled' };
     if(!resource.disabled) return { success:true, resource, message:'Already enabled' };
+    
     try {
       const dir = path.dirname(resource.absolutePath);
       let base = path.basename(resource.absolutePath);
       if(base.toLowerCase().endsWith('.disabled')) base = base.slice(0, -('.disabled'.length));
       const newPath = path.join(dir, base);
-      await (this.fileService as any).copyFile(resource.absolutePath, newPath);
-      const deleter: any = (this.fileService as any).deleteFile?.bind(this.fileService);
-      if(deleter) await deleter(resource.absolutePath); else await fs.unlink(resource.absolutePath);
-  resource.absolutePath = newPath;
-      (resource as any).disabled = false;
-      resource.state = ResourceState.ACTIVE;
-  this.log(`[ResourceService] enableUserResource ${resource.id} -> ${newPath}`);
-      return { success:true, resource, message:'Enabled user resource' };
-    } catch(e:any){ return { success:false, resource, message:'Enable failed', details: e?.message }; }
+      const tempPath = newPath + '.tmp';
+      
+      // Atomic operation: copy to temp, then rename
+      await (this.fileService as any).copyFile(resource.absolutePath, tempPath);
+      
+      try {
+        // Try to rename temp to final name
+        if(typeof (this.fileService as any).renameFile === 'function') {
+          await (this.fileService as any).renameFile(tempPath, newPath);
+        } else {
+          // Fallback: copy and delete (less atomic but works)
+          await (this.fileService as any).copyFile(tempPath, newPath);
+          const deleter: any = (this.fileService as any).deleteFile?.bind(this.fileService);
+          if(deleter) await deleter(tempPath); else await fs.unlink(tempPath);
+        }
+        
+        // Delete original only after successful copy/rename
+        const deleter: any = (this.fileService as any).deleteFile?.bind(this.fileService);
+        if(deleter) await deleter(resource.absolutePath); else await fs.unlink(resource.absolutePath);
+        
+        resource.absolutePath = newPath;
+        (resource as any).disabled = false;
+        resource.state = ResourceState.ACTIVE;
+        this.log(`[ResourceService] enableUserResource ${resource.id} -> ${newPath}`);
+        return { success:true, resource, message:'Enabled user resource' };
+        
+      } catch (renameError) {
+        // Cleanup temp file on failure
+        try {
+          const deleter: any = (this.fileService as any).deleteFile?.bind(this.fileService);
+          if(deleter) await deleter(tempPath); else await fs.unlink(tempPath);
+        } catch {}
+        throw renameError;
+      }
+    } catch(e:any){ return { success:false, resource, message:'Enable failed', details: sanitizeErrorMessage(e) }; }
   }
 
   // --- MCP helpers ---
@@ -570,8 +722,15 @@ export class ResourceService implements IResourceService {
       return 'hash:' + JSON.stringify(ordered(task));
     } catch { return 'hash:unknown'; }
   }
-  private async readJsonFileSafe(p: string): Promise<any> {
-    try { const raw = await this.fileService.readFile(p); return JSON.parse(this.stripJsonComments(raw)||'{}'); } catch { return {}; }
+  private async readJsonFileSafe(p: string): Promise<any> { 
+    try { 
+      const raw = await this.fileService.readFile(p); 
+      const cleaned = this.stripJsonComments(raw||'{}');
+      return JSON.parse(cleaned); 
+    } catch (e) { 
+      this.log(`[ResourceService] readJsonFileSafe failed for ${path.basename(p)}: ${sanitizeErrorMessage(e)}`);
+      return {}; 
+    } 
   }
   private async writeJsonFilePretty(p: string, obj: any): Promise<void> {
     await this.fileService.ensureDirectory(path.dirname(p));
@@ -594,16 +753,26 @@ export class ResourceService implements IResourceService {
   private async mergeVsCodeTasks(resource: Resource): Promise<{added:number}> {
     try {
       const srcObj = await this.readJsonFileSafe(resource.absolutePath);
+      
+      // Validate task configuration before processing
+      const validation = validateTaskConfig(srcObj);
+      if (!validation.valid) {
+        this.log(`[ResourceService] mergeVsCodeTasks validation failed: ${validation.errors.join(', ')}`);
+        return { added: 0 };
+      }
+      
       const newTasks = this.extractVsCodeTasks(srcObj);
-  this.log(`[ResourceService] mergeVsCodeTasks src=${path.basename(resource.absolutePath)} extracted=${newTasks.length}`);
+      this.log(`[ResourceService] mergeVsCodeTasks src=${path.basename(resource.absolutePath)} extracted=${newTasks.length}`);
       if(newTasks.length === 0) return { added: 0 };
+      
       const tasksPath = this.getTasksJsonPath(resource);
-  this.log(`[ResourceService] mergeVsCodeTasks tasksPath=${tasksPath}`);
+      this.log(`[ResourceService] mergeVsCodeTasks tasksPath=${tasksPath}`);
       const tasksObj = await this.readJsonFileSafe(tasksPath);
       const tasksArr: any[] = Array.isArray(tasksObj.tasks) ? tasksObj.tasks : [];
       const existingKeys = new Set(tasksArr.map(t=> this.normalizeTaskForKey(t)));
       const toAdd: any[] = [];
       const addedKeys: string[] = [];
+      
       for(const t of newTasks){
         const key = this.normalizeTaskForKey(t);
         if(!existingKeys.has(key)){
@@ -612,10 +781,12 @@ export class ResourceService implements IResourceService {
           existingKeys.add(key);
         }
       }
+      
       if(toAdd.length === 0) return { added: 0 };
       const updated = { version: '2.0.0', ...tasksObj, tasks: [...tasksArr, ...toAdd] };
       await this.writeJsonFilePretty(tasksPath, updated);
       this.log(`[ResourceService] mergeVsCodeTasks wrote tasks.json added=${toAdd.length}`);
+      
       // Update meta
       const meta = await this.readTasksMeta(resource);
       meta.byResourceId = meta.byResourceId || {};
@@ -656,11 +827,20 @@ export class ResourceService implements IResourceService {
     try {
       const text = this.stripJsonComments(raw);
       const obj = JSON.parse(text || '{}');
+      
+      // Validate MCP configuration
+      const validation = validateMcpConfig(obj);
+      if (!validation.valid) {
+        this.log(`[ResourceService] parseMcpConfig validation warnings: ${validation.errors.join(', ')}`);
+        // Continue with parsing but log warnings
+      }
+      
       // Normalize shape
       const servers = obj.servers && typeof obj.servers === 'object' ? obj.servers : (obj["mcpServers"] && typeof obj["mcpServers"] === 'object' ? obj["mcpServers"] : {});
       const inputs = Array.isArray(obj.inputs) ? obj.inputs : [];
       return { inputs, servers };
-    } catch {
+    } catch (e) {
+      this.log(`[ResourceService] parseMcpConfig failed: ${sanitizeErrorMessage(e)}`);
       return { inputs: [], servers: {} };
     }
   }
