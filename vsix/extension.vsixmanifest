@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- PackageManifest Version is the VSIX schema version (keep at 2.0.0). Extension semantic version is on the Identity element. -->
+<PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
+  <Metadata>
+  <Identity Language="en-US" Id="promptvault" Version="0.3.3" Publisher="jonathan-nafta" />
+    <DisplayName>PromptVault</DisplayName>
+    <Description xml:space="preserve">Manage AI assistant catalog resources (chat modes, instructions, prompts, tasks) across multiple repositories.</Description>
+    <Tags>copilot,catalog,ai</Tags>
+    <Categories>Other</Categories>
+    <GalleryFlags>Public</GalleryFlags>
+    <Icon>extension/resources/activity-icon.svg</Icon>
+  </Metadata>
+  <Installation>
+    <InstallationTarget Id="Microsoft.VisualStudio.Code" />
+  </Installation>
+  <Dependencies />
+  <Assets>
+    <Asset Type="Microsoft.VisualStudio.Code.Manifest" Path="extension/package.json" />
+  <Asset Type="Microsoft.VisualStudio.Code.Extension" Path="extension" />
+    <Asset Type="Microsoft.VisualStudio.Services.Content.Details" Path="extension/README.md" />
+  <Asset Type="Microsoft.VisualStudio.Services.Icons.Default" Path="extension/resources/icon.png" />
+  </Assets>
+</PackageManifest>

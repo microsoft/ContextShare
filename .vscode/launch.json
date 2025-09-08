@@ -1,0 +1,53 @@
+{
+  // Launch configs for running the extension in a Dev Host and for tests
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run Extension",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}",
+        "--user-data-dir=${workspaceFolder}/.vscode/.dev-data",
+        "--extensions-dir=${workspaceFolder}/.vscode/.dev-extensions",
+        "${workspaceFolder}/catalog-dev.code-workspace"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/dist/**/*.js"
+      ],
+      "preLaunchTask": "Watch Mode"
+    },
+    {
+      "name": "Run Extension (Build once)",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}",
+        "--user-data-dir=${workspaceFolder}/.vscode/.dev-data",
+        "--extensions-dir=${workspaceFolder}/.vscode/.dev-extensions",
+        "${workspaceFolder}/catalog-dev.code-workspace"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/dist/**/*.js"
+      ],
+      "preLaunchTask": "Build Extension"
+    },
+    {
+      // Keep a tests config similar to the original
+      "name": "Extension Tests",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}",
+        "--extensionTestsPath=${workspaceFolder}/dist/test",
+        "--user-data-dir=${workspaceFolder}/.vscode/.dev-data",
+        "--extensions-dir=${workspaceFolder}/.vscode/.dev-extensions",
+        "${workspaceFolder}/catalog-dev.code-workspace"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/dist/**/*.js"
+      ],
+      "preLaunchTask": "Build Extension"
+    }
+  ]
+}
