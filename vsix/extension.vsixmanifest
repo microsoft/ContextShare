@@ -2,7 +2,7 @@
 <!-- PackageManifest Version is the VSIX schema version (keep at 2.0.0). Extension semantic version is on the Identity element. -->
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
   <Metadata>
-  <Identity Language="en-US" Id="contextshare" Version="0.3.4" Publisher="ContextShare" />
+  <Identity Language="en-US" Id="contextshare" Version="0.3.5" Publisher="ContextShare" />
     <DisplayName>ContextShare</DisplayName>
     <Description xml:space="preserve">Manage AI assistant catalog resources (chat modes, instructions, prompts, tasks) across multiple repositories.</Description>
     <Tags>copilot,catalog,ai</Tags>
