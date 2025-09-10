@@ -32,9 +32,13 @@ async function log(msg: string){
 			try {
 				await fs.mkdir(path.dirname(logFilePath), { recursive: true });
 				await fs.appendFile(logFilePath, line + '\n');
-			} catch { /* ignore file logging errors */ }
+			} catch (error) { 
+				console.warn(`[Extension] File logging failed: ${error}`);
+			}
 		}
-	} catch { /* ignore logging errors */ }
+	} catch (error) { 
+		console.warn(`[Extension] Logging failed: ${error}`);
+	}
 }
 
 async function discoverRepositories(runtimeDirName: string): Promise<Repository[]> {
@@ -212,7 +216,9 @@ export async function activate(context: vscode.ExtensionContext) {
 						try {
 							await vscode.workspace.fs.stat(vscode.Uri.file(exampleCatalog));
 							await config.update('copilotCatalog.catalogDirectory', { [exampleCatalog]: 'ExampleCatalog' }, vscode.ConfigurationTarget.Workspace);
-						} catch { /* ignore missing example catalog */ }
+						} catch (error) { 
+							log(`Failed to setup example catalog: ${error}`);
+						}
 					}
 				}
 				vscode.window.showInformationMessage(`ContextShare: Created dummy target workspace at ${dummyRoot}`);
@@ -375,7 +381,9 @@ export async function activate(context: vscode.ExtensionContext) {
 			try {
 				const stat = await vscode.workspace.fs.stat(vscode.Uri.file(absPath));
 				if(stat.type !== vscode.FileType.Directory){ catalogPath = path.dirname(absPath); }
-			} catch { /* ignore */ }
+			} catch (error) { 
+				log(`Failed to stat catalog path: ${error}`);
+			}
 			const runtimeRoot = runtimeRootPreference || path.dirname(catalogPath);
 			return {
 				id: `virtual:${catalogPath}`,
@@ -426,7 +434,9 @@ export async function activate(context: vscode.ExtensionContext) {
 				await loadResources();
 				// No-op: hats are discovered on demand when command is invoked
 				log(`Refresh complete. Repo count=${repositories.length} resources=${resources.length}`);
-				try { updateStatus(); } catch { /* ignore */ }
+				try { updateStatus(); } catch (error) { 
+					log(`Failed to update status: ${error}`);
+				}
 			} catch(e:any){
 				log('Refresh error: ' + (e?.stack || e));
 				vscode.window.showErrorMessage('ContextShare refresh failed: ' + getErrorMessage(e));
@@ -744,7 +754,9 @@ export async function activate(context: vscode.ExtensionContext) {
 							const newCatalogDirectories = {...currentCatalogDirectories, [root]: ''};
 							await cfg.update('copilotCatalog.catalogDirectory', newCatalogDirectories, vscode.ConfigurationTarget.WorkspaceFolder);
 							vscode.window.showInformationMessage('Configured ContextShare to use the new template directory.');
-						} catch { /* ignore */ }
+						} catch (error) { 
+							log(`Failed to update catalog directory configuration: ${error}`);
+						}
 					}
 					await refresh();
 				} catch(e:any){ vscode.window.showErrorMessage('Failed to create template catalog: ' + getErrorMessage(e)); }

@@ -163,7 +163,9 @@ export class HatService {
         const resources = obj.resources.filter((x:any)=> typeof x==='string');
         return { name: obj.name, description, resources };
       }
-    }catch{ /* ignore */ }
+    }catch(error) { 
+      console.warn(`[HatService] Failed to parse hat file: ${error}`);
+    }
     return undefined;
   }
 

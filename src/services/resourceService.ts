@@ -6,6 +6,7 @@ import * as https from 'https';
 import * as path from 'path';
 import { ActivateOptions, IFileService, IResourceService, OperationResult, Repository, Resource, ResourceCategory, ResourceState } from '../models';
 import { isSafeRelativeEntry, sanitizeFilename, isValidHttpsUrl, sanitizeErrorMessage, validateMcpConfig, validateTaskConfig } from '../utils/security';
+import { getErrorMessage } from '../utils/errors';
 
 const CATEGORY_DIRS: Record<ResourceCategory,string> = { chatmodes:'chatmodes', instructions:'instructions', prompts:'prompts', tasks:'tasks', mcp:'mcp'};
 
@@ -29,7 +30,10 @@ export class ResourceService implements IResourceService {
       // Sanitize log messages to prevent information disclosure
       const sanitized = sanitizeErrorMessage(msg);
       this.logger?.(sanitized); 
-    } catch { /* ignore logging errors */ } 
+    } catch (error) { 
+      // Log to console as fallback if logger fails
+      console.warn(`[ResourceService] Logger failed: ${getErrorMessage(error)}`);
+    } 
   }
 
   setTargetWorkspaceOverride(path?: string){
@@ -147,7 +151,9 @@ export class ResourceService implements IResourceService {
                 const abs = await this.cacheRemoteToDisk(repository, category, safeName, content);
                 const rel = path.join(CATEGORY_DIRS[category], safeName);
                 resources.push({ id: `${repository.name}:remote:${rel}`, relativePath: rel, absolutePath: abs, category, targetSubdir: CATEGORY_DIRS[category], repository, state: ResourceState.INACTIVE, origin: 'remote'});
-              } catch { /* individual file skip */ }
+              } catch (error) { 
+                this.log(`[ResourceService] Failed to fetch individual file ${fileUrl}: ${getErrorMessage(error)}`);
+              }
             }
           } else {
             const content = await this.fetchRemoteCached(override);
@@ -157,7 +163,10 @@ export class ResourceService implements IResourceService {
             const rel = path.join(CATEGORY_DIRS[category], safeName);
             resources.push({ id: `${repository.name}:remote:${rel}`, relativePath: rel, absolutePath: abs, category, targetSubdir: CATEGORY_DIRS[category], repository, state: ResourceState.INACTIVE, origin: 'remote'});
           }
-          } catch (e:any) { this.log(`[ResourceService] remote source failed for ${category}: ${sanitizeErrorMessage(e)}`); /* ignore remote failure */ }
+          } catch (e:any) { 
+            this.log(`[ResourceService] remote source failed for ${category}: ${sanitizeErrorMessage(e)}`); 
+            // Continue with other sources even if remote fails
+          }
         continue;
       }
       const baseDir = override ? this.resolveSourceDir(repository, override) : repository.catalogPath;
@@ -210,7 +219,11 @@ export class ResourceService implements IResourceService {
             }
             resources.push({ id: `${repository.name}:${relCandidate}`, relativePath: relCandidate, absolutePath: filePath, category, targetSubdir: CATEGORY_DIRS[category], repository, state: ResourceState.INACTIVE, origin: 'catalog'});
         }
-  } catch (e:any) { this.log(`[ResourceService] fallback recursive scan failed: ${sanitizeErrorMessage(e)}`); /* ignore recursive scan failure */ }
+  } catch (e:any) { 
+    this.log(`[ResourceService] fallback recursive scan failed: ${sanitizeErrorMessage(e)}`); 
+    // Return empty array if recursive scan fails
+    return [];
+  }
     }
     // User created runtime-only resources (exist in runtime but not catalog). We treat them as ACTIVE and origin 'user'
     const runtimeUser: Resource[] = [];
@@ -576,7 +589,9 @@ export class ResourceService implements IResourceService {
             if(remaining.length) meta.byResourceId[resource.id] = remaining; else delete meta.byResourceId[resource.id];
             await this.fileService.writeFile(metaPath, JSON.stringify(meta, null, 2));
           }
-        } catch { /* ignore meta update errors */ }
+        } catch (error) { 
+          this.log(`[ResourceService] Failed to update meta file: ${getErrorMessage(error)}`);
+        }
         resource.state = await this.getResourceState(resource);
         this.log(`[ResourceService] deactivateResource MCP updated target=${target} removed=${namesToRemove.length}`);
         return { success:true, resource, message:'MCP entries removed (kept user entries)'};
@@ -588,7 +603,15 @@ export class ResourceService implements IResourceService {
       const target = this.getTargetPath(resource);
       // Prefer fileService delete if available (mock aware), fallback to fs.unlink
       const deleter: any = (this.fileService as any).deleteFile?.bind(this.fileService);
-      if(deleter){ await deleter(target); } else { try { await fs.unlink(target);} catch {} }
+      if(deleter){ 
+        await deleter(target); 
+      } else { 
+        try { 
+          await fs.unlink(target);
+        } catch (error) {
+          this.log(`[ResourceService] Failed to unlink target file ${target}: ${getErrorMessage(error)}`);
+        }
+      }
       // If task, also remove from .vscode/tasks.json based on metadata
       if(resource.category === ResourceCategory.TASKS){
         try { const removed = await this.removeVsCodeTasks(resource); this.log(`[ResourceService] tasks.json cleanup removed=${removed}`); } catch(e:any){ this.log(`[ResourceService] tasks.json cleanup failed: ${sanitizeErrorMessage(e)}`); }
@@ -596,6 +619,57 @@ export class ResourceService implements IResourceService {
       resource.state = await this.getResourceState(resource);
       this.log(`[ResourceService] deactivateResource removed target=${target} state=${resource.state}`);
       return { success:true, resource, message:'Deactivated'};
+    }
+  }
+
+  // -- Atomic file operations helper
+  private async atomicFileOperation(
+    sourcePath: string, 
+    targetPath: string, 
+    operation: 'move' | 'copy'
+  ): Promise<void> {
+    const tempPath = targetPath + '.tmp.' + Date.now();
+    let tempCreated = false;
+    
+    try {
+      // Step 1: Copy source to temp location
+      await (this.fileService as any).copyFile(sourcePath, tempPath);
+      tempCreated = true;
+      
+      // Step 2: Move/copy temp to final location
+      if(typeof (this.fileService as any).renameFile === 'function') {
+        await (this.fileService as any).renameFile(tempPath, targetPath);
+      } else {
+        // Fallback: copy and delete temp
+        await (this.fileService as any).copyFile(tempPath, targetPath);
+        await this.safeDeleteFile(tempPath);
+      }
+      
+      // Step 3: Delete source if this is a move operation
+      if(operation === 'move') {
+        await this.safeDeleteFile(sourcePath);
+      }
+      
+    } catch (error) {
+      // Rollback: clean up temp file if it was created
+      if(tempCreated) {
+        await this.safeDeleteFile(tempPath);
+      }
+      throw error;
+    }
+  }
+  
+  private async safeDeleteFile(filePath: string): Promise<void> {
+    try {
+      const deleter: any = (this.fileService as any).deleteFile?.bind(this.fileService);
+      if(deleter) {
+        await deleter(filePath);
+      } else {
+        await fs.unlink(filePath);
+      }
+    } catch (error) {
+      this.log(`[ResourceService] Failed to delete file ${filePath}: ${getErrorMessage(error)}`);
+      // Don't throw - file deletion failures are often non-critical
     }
   }
 
@@ -608,41 +682,19 @@ export class ResourceService implements IResourceService {
       const dir = path.dirname(resource.absolutePath);
       const base = path.basename(resource.absolutePath);
       const newPath = path.join(dir, base + '.disabled');
-      const tempPath = newPath + '.tmp';
       
-      // Atomic operation: copy to temp, then rename
-      await (this.fileService as any).copyFile(resource.absolutePath, tempPath);
+      // Atomic move operation
+      await this.atomicFileOperation(resource.absolutePath, newPath, 'move');
       
-      try {
-        // Try to rename temp to final name
-        if(typeof (this.fileService as any).renameFile === 'function') {
-          await (this.fileService as any).renameFile(tempPath, newPath);
-        } else {
-          // Fallback: copy and delete (less atomic but works)
-          await (this.fileService as any).copyFile(tempPath, newPath);
-          const deleter: any = (this.fileService as any).deleteFile?.bind(this.fileService);
-          if(deleter) await deleter(tempPath); else await fs.unlink(tempPath);
-        }
-        
-        // Delete original only after successful copy/rename
-        const deleter: any = (this.fileService as any).deleteFile?.bind(this.fileService);
-        if(deleter) await deleter(resource.absolutePath); else await fs.unlink(resource.absolutePath);
-        
-        resource.absolutePath = newPath;
-        (resource as any).disabled = true;
-        resource.state = ResourceState.INACTIVE;
-        this.log(`[ResourceService] disableUserResource ${resource.id} -> ${newPath}`);
-        return { success:true, resource, message:'Disabled user resource' };
-        
-      } catch (renameError) {
-        // Cleanup temp file on failure
-        try {
-          const deleter: any = (this.fileService as any).deleteFile?.bind(this.fileService);
-          if(deleter) await deleter(tempPath); else await fs.unlink(tempPath);
-        } catch {}
-        throw renameError;
-      }
-    } catch(e:any){ return { success:false, resource, message:'Disable failed', details: sanitizeErrorMessage(e) }; }
+      resource.absolutePath = newPath;
+      (resource as any).disabled = true;
+      resource.state = ResourceState.INACTIVE;
+      this.log(`[ResourceService] disableUserResource ${resource.id} -> ${newPath}`);
+      return { success:true, resource, message:'Disabled user resource' };
+      
+    } catch(e:any){ 
+      return { success:false, resource, message:'Disable failed', details: sanitizeErrorMessage(e) }; 
+    }
   }
   
   async enableUserResource(resource: Resource): Promise<OperationResult>{
@@ -654,41 +706,19 @@ export class ResourceService implements IResourceService {
       let base = path.basename(resource.absolutePath);
       if(base.toLowerCase().endsWith('.disabled')) base = base.slice(0, -('.disabled'.length));
       const newPath = path.join(dir, base);
-      const tempPath = newPath + '.tmp';
       
-      // Atomic operation: copy to temp, then rename
-      await (this.fileService as any).copyFile(resource.absolutePath, tempPath);
+      // Atomic move operation
+      await this.atomicFileOperation(resource.absolutePath, newPath, 'move');
       
-      try {
-        // Try to rename temp to final name
-        if(typeof (this.fileService as any).renameFile === 'function') {
-          await (this.fileService as any).renameFile(tempPath, newPath);
-        } else {
-          // Fallback: copy and delete (less atomic but works)
-          await (this.fileService as any).copyFile(tempPath, newPath);
-          const deleter: any = (this.fileService as any).deleteFile?.bind(this.fileService);
-          if(deleter) await deleter(tempPath); else await fs.unlink(tempPath);
-        }
-        
-        // Delete original only after successful copy/rename
-        const deleter: any = (this.fileService as any).deleteFile?.bind(this.fileService);
-        if(deleter) await deleter(resource.absolutePath); else await fs.unlink(resource.absolutePath);
-        
-        resource.absolutePath = newPath;
-        (resource as any).disabled = false;
-        resource.state = ResourceState.ACTIVE;
-        this.log(`[ResourceService] enableUserResource ${resource.id} -> ${newPath}`);
-        return { success:true, resource, message:'Enabled user resource' };
-        
-      } catch (renameError) {
-        // Cleanup temp file on failure
-        try {
-          const deleter: any = (this.fileService as any).deleteFile?.bind(this.fileService);
-          if(deleter) await deleter(tempPath); else await fs.unlink(tempPath);
-        } catch {}
-        throw renameError;
-      }
-    } catch(e:any){ return { success:false, resource, message:'Enable failed', details: sanitizeErrorMessage(e) }; }
+      resource.absolutePath = newPath;
+      (resource as any).disabled = false;
+      resource.state = ResourceState.ACTIVE;
+      this.log(`[ResourceService] enableUserResource ${resource.id} -> ${newPath}`);
+      return { success:true, resource, message:'Enabled user resource' };
+      
+    } catch(e:any){ 
+      return { success:false, resource, message:'Enable failed', details: sanitizeErrorMessage(e) }; 
+    }
   }
 
   // --- MCP helpers ---
@@ -819,7 +849,9 @@ export class ResourceService implements IResourceService {
         const remaining = (meta.byResourceId[resource.id] || []).filter((k: string)=> !toRemove.has(k));
         if(remaining.length) meta.byResourceId[resource.id] = remaining; else delete meta.byResourceId[resource.id];
         await this.writeTasksMeta(resource, meta);
-      } catch { /* ignore meta update errors */ }
+      } catch (error) { 
+        this.log(`[ResourceService] Failed to update meta file during activation: ${getErrorMessage(error)}`);
+      }
     }
     return removed;
   }
