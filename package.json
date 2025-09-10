@@ -1,5 +1,5 @@
 {
-  "name": "ContextShare",
+  "name": "contextshare",
   "displayName": "ContextShare",
   "description": "Manage AI assistant catalog resources (chat modes, instructions, prompts, tasks, MCP) across multiple repositories inside VS Code.",
   "version": "0.3.5",
@@ -415,7 +415,8 @@
     "bundle": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --platform=node --format=cjs --external:vscode --sourcemap",
     "package": "echo 'vsce not installed in offline env'",
     "verify:version": "node scripts/verify-version-sync.js",
-    "test": "node dist/test/resourceService.test.js && node dist/test/treeIcons.test.js && node dist/test/naming.test.js && node dist/test/mcpMerge.test.js && node dist/test/hats.test.js && node dist/test/commandsRegistered.test.js && node dist/test/display.test.js && node dist/test/catalogDisplayName.test.js && node dist/test/repositoryDiscovery.test.js && node dist/test/targetPath.test.js && node dist/test/workspaceConfiguration.test.js && node dist/test/resourceActivation.test.js",
+    "test": "npm run test:unit",
+    "test:unit": "node dist/test/resourceService.test.js && node dist/test/treeIcons.test.js && node dist/test/naming.test.js && node dist/test/mcpMerge.test.js && node dist/test/hats.test.js && node dist/test/commandsRegistered.test.js && node dist/test/display.test.js && node dist/test/catalogDisplayName.test.js && node dist/test/repositoryDiscovery.test.js && node dist/test/targetPath.test.js && node dist/test/workspaceConfiguration.test.js && node dist/test/resourceActivation.test.js && node dist/test/integration.test.js && node dist/test/performance.test.js && node dist/test/security.integration.test.js && node dist/test/userExperience.test.js",
     "test:all": "npm run test && npm run test:integration && npm run test:performance && npm run test:security && npm run test:ux",
     "test:integration": "node dist/test/integration.test.js",
     "test:performance": "node dist/test/performance.test.js",

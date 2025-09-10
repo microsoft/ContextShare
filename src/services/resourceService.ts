@@ -7,6 +7,7 @@ import * as path from 'path';
 import { ActivateOptions, IFileService, IResourceService, OperationResult, Repository, Resource, ResourceCategory, ResourceState } from '../models';
 import { isSafeRelativeEntry, sanitizeFilename, isValidHttpsUrl, sanitizeErrorMessage, validateMcpConfig, validateTaskConfig } from '../utils/security';
 import { getErrorMessage } from '../utils/errors';
+import { logger } from '../utils/logger';
 
 const CATEGORY_DIRS: Record<ResourceCategory,string> = { chatmodes:'chatmodes', instructions:'instructions', prompts:'prompts', tasks:'tasks', mcp:'mcp'};
 
@@ -31,8 +32,8 @@ export class ResourceService implements IResourceService {
       const sanitized = sanitizeErrorMessage(msg);
       this.logger?.(sanitized); 
     } catch (error) { 
-      // Log to console as fallback if logger fails
-      console.warn(`[ResourceService] Logger failed: ${getErrorMessage(error)}`);
+      // Log to structured logger as fallback if injected logger fails (fire-and-forget)
+      void logger.warn(`[ResourceService] Logger failed: ${getErrorMessage(error)}`);
     } 
   }
 
