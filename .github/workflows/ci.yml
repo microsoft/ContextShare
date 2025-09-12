@@ -42,17 +42,8 @@ jobs:
     - name: Build extension
       run: npm run build
 
-    - name: Run unit tests
-      run: xvfb-run -a npm run test:unit
-
-    - name: Run integration tests
-      run: xvfb-run -a npm run test:integration
-
-    - name: Run performance tests
-      run: xvfb-run -a npm run test:performance
-
-    - name: Run security tests
-      run: xvfb-run -a npm run test:security
+    - name: Run all tests
+      run: xvfb-run -a npm test
 
     - name: Check for TypeScript errors
       run: npx tsc --noEmit
