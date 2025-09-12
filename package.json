@@ -1,5 +1,5 @@
 {
-  "name": "ContextShare",
+  "name": "contextshare",
   "displayName": "ContextShare",
   "description": "Manage AI assistant catalog resources (chat modes, instructions, prompts, tasks, MCP) across multiple repositories inside VS Code.",
   "version": "0.3.5",
@@ -415,8 +415,14 @@
     "bundle": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --platform=node --format=cjs --external:vscode --sourcemap",
     "package": "echo 'vsce not installed in offline env'",
     "verify:version": "node scripts/verify-version-sync.js",
-    "test": "node dist/test/resourceService.test.js && node dist/test/treeIcons.test.js && node dist/test/naming.test.js && node dist/test/mcpMerge.test.js && node dist/test/hats.test.js && node dist/test/commandsRegistered.test.js && node dist/test/display.test.js && node dist/test/catalogDisplayName.test.js && node dist/test/repositoryDiscovery.test.js && node dist/test/targetPath.test.js && node dist/test/workspaceConfiguration.test.js && node dist/test/resourceActivation.test.js",
-    "test:all": "node dist/test/resourceService.test.js && node dist/test/treeIcons.test.js && node dist/test/naming.test.js && node dist/test/mcpMerge.test.js && node dist/test/hats.test.js && node dist/test/commandsRegistered.test.js && node dist/test/display.test.js && node dist/test/catalogDisplayName.test.js && node dist/test/repositoryDiscovery.test.js && node dist/test/targetPath.test.js && node dist/test/workspaceConfiguration.test.js && node dist/test/resourceActivation.test.js",
+    "test": "npm run compile && node ./dist/test/runVscodeTests.js",
+    "compile": "tsc -p ./",
+    "test:unit": "node dist/test/runTest.js",
+    "test:all": "npm run test && npm run test:integration && npm run test:performance && npm run test:security && npm run test:ux",
+    "test:integration": "node dist/test/integration.test.js",
+    "test:performance": "node dist/test/performance.test.js",
+    "test:security": "node dist/test/security.integration.test.js",
+    "test:ux": "node dist/test/userExperience.test.js",
     "test:edge-cases": "node dist/test/repositoryDiscovery.test.js && node dist/test/targetPath.test.js && node dist/test/workspaceConfiguration.test.js && node dist/test/resourceActivation.test.js",
     "package:vsix": "npx @vscode/vsce package",
     "security:audit": "npm audit --audit-level=moderate",
@@ -428,10 +434,15 @@
     "lint:shebang": "node scripts/enforce-shebang.js"
   },
   "devDependencies": {
+    "@types/glob": "^8.1.0",
+    "@types/mocha": "^10.0.10",
     "@types/node": "^20.14.10",
     "@types/vscode": "^1.90.0",
+    "@vscode/test-electron": "^2.3.9",
     "@vscode/vsce": "^3.0.0",
     "esbuild": "^0.25.9",
+    "glob": "^11.0.3",
+    "mocha": "^11.7.2",
     "typescript": "^5.4.0"
   }
 }

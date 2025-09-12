@@ -16,26 +16,13 @@ import { OverviewTreeProvider } from './tree/overviewTreeProvider';
 import { getCatalogDisplayName } from './utils/display';
 import { preserveFileWithVariant } from './utils/fileOperations';
 import { handleErrorWithNotification, getErrorMessage } from './utils/errors';
+import { logger } from './utils/logger';
 
-// Lightweight logging helper (avoids creating multiple channels)
-let logChannel: vscode.OutputChannel | undefined;
+// Initialize structured logger (writes to OutputChannel and optional file)
 const LOG_FILENAME = 'contextshare-debug.log';
 let enableFileLogging = false;
 let logFilePath: string | undefined;
-async function log(msg: string){
-	const line = `[${new Date().toISOString()}] ${msg}`;
-	try {
-		if(!logChannel){ logChannel = vscode.window.createOutputChannel('ContextShare'); }
-		logChannel.appendLine(line);
-		// Optional mirror to a log file under user global storage (not in workspace)
-		if(enableFileLogging && logFilePath){
-			try {
-				await fs.mkdir(path.dirname(logFilePath), { recursive: true });
-				await fs.appendFile(logFilePath, line + '\n');
-			} catch { /* ignore file logging errors */ }
-		}
-	} catch { /* ignore logging errors */ }
-}
+// logger.init will be called during activation once context and config are available
 
 async function discoverRepositories(runtimeDirName: string): Promise<Repository[]> {
 	const repos: Repository[] = [];
@@ -138,8 +125,12 @@ export async function activate(context: vscode.ExtensionContext) {
 	try {
 		const fileService = new FileService();
 		const resourceService = new ResourceService(fileService);
+		// Configure structured logger now that we have context and config.
+		enableFileLogging = !!vscode.workspace.getConfiguration().get<boolean>('copilotCatalog.enableFileLogging', false);
+		logFilePath = path.join(context.globalStorageUri.fsPath, LOG_FILENAME);
+		logger.init(context, { enableFileLogging, filePath: logFilePath, channelName: 'ContextShare' });
 		// Wire service-level logger so core operations emit to the output channel/file
-		(resourceService as any).setLogger?.(log);
+		(resourceService as any).setLogger?.(logger.asFunction());
 		// Create tree providers for each category and overview
 		const overviewTree = new OverviewTreeProvider();
 		const chatmodesTree = new CategoryTreeProvider(ResourceCategory.CHATMODES);
@@ -212,18 +203,20 @@ export async function activate(context: vscode.ExtensionContext) {
 						try {
 							await vscode.workspace.fs.stat(vscode.Uri.file(exampleCatalog));
 							await config.update('copilotCatalog.catalogDirectory', { [exampleCatalog]: 'ExampleCatalog' }, vscode.ConfigurationTarget.Workspace);
-						} catch { /* ignore missing example catalog */ }
+						} catch (error) { 
+							await logger.warn(`Failed to setup example catalog: ${getErrorMessage(error)}`);
+						}
 					}
 				}
 				vscode.window.showInformationMessage(`ContextShare: Created dummy target workspace at ${dummyRoot}`);
 			} catch(e:any){
-				await log('Auto dummy workspace creation failed: ' + (e?.message || e));
+				await logger.warn('Auto dummy workspace creation failed: ' + (e?.message || e));
 			}
 		}
 		// Respect target workspace override on startup (expand ${workspaceFolder} tokens)
 		const resolvedTargetWs = resolveWorkspacePath(rawTargetWs);
 		resourceService.setTargetWorkspaceOverride(resolvedTargetWs);
-		await log(`Resolved targetWorkspace: raw=${rawTargetWs || '(none)'} -> ${resolvedTargetWs || '(none)'} `);
+		await logger.info(`Resolved targetWorkspace: raw=${rawTargetWs || '(none)'} -> ${resolvedTargetWs || '(none)'} `);
 		// Set current workspace root as fallback for target workspace
 		const currentWorkspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 		if (currentWorkspaceRoot) {
@@ -298,7 +291,7 @@ export async function activate(context: vscode.ExtensionContext) {
 						});
 						catalogOnly.push(...pureCatalog);
 					} catch (e: any) {
-						await log(`Failed to load catalog directory "${directory}": ${e?.message || e}`);
+						await logger.warn(`Failed to load catalog directory "${directory}": ${getErrorMessage(e)}`);
 					}
 				}
 				// Merge catalog resources with (single) user runtime resources
@@ -320,7 +313,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			allResources = currentRepo ? await discoverMultipleCatalogs(currentRepo) : [];
 			const preCounts: Record<string, number> = {};
 			for(const r of allResources){ preCounts[r.category] = (preCounts[r.category]||0)+1; }
-			await log(`loadResources: discovered total=${allResources.length} byCat=${JSON.stringify(preCounts)}`);
+			await logger.info(`loadResources: discovered total=${allResources.length} byCat=${JSON.stringify(preCounts)}`);
 
 			// Collapse duplicate entries (catalog + user runtime copy) by hiding the user-origin entry
 			// when a catalog/remote resource with the same category + basename is ACTIVE or MODIFIED.
@@ -353,7 +346,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				allResources;
 			const postCounts: Record<string, number> = {};
 			for(const r of filteredResources){ postCounts[r.category] = (postCounts[r.category]||0)+1; }
-			await log(`loadResources: filtered=${filteredResources.length} byCat=${JSON.stringify(postCounts)} filter=${catalogFilter||'(none)'} dt=${Date.now()-t0}ms`);
+			await logger.info(`loadResources: filtered=${filteredResources.length} byCat=${JSON.stringify(postCounts)} filter=${catalogFilter||'(none)'} dt=${Date.now()-t0}ms`);
 			
 			// Update all tree providers with filtered resources
 			overviewTree.setRepository(currentRepo, filteredResources);
@@ -375,7 +368,9 @@ export async function activate(context: vscode.ExtensionContext) {
 			try {
 				const stat = await vscode.workspace.fs.stat(vscode.Uri.file(absPath));
 				if(stat.type !== vscode.FileType.Directory){ catalogPath = path.dirname(absPath); }
-			} catch { /* ignore */ }
+			} catch (error) { 
+				await logger.warn(`Failed to stat catalog path: ${getErrorMessage(error)}`);
+			}
 			const runtimeRoot = runtimeRootPreference || path.dirname(catalogPath);
 			return {
 				id: `virtual:${catalogPath}`,
@@ -407,33 +402,35 @@ export async function activate(context: vscode.ExtensionContext) {
 					await vscode.workspace.fs.stat(vscode.Uri.file(abs));
 					const workspaceRoot = (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0]?.uri.fsPath) || undefined;
 					const virt = await deriveVirtualRepoFromOverride(abs, workspaceRoot);
-					if(virt){ repositories.push(virt); await log(`Created virtual repository for external catalog: ${virt.catalogPath}`); break; }
-				} catch (e:any) { await log(`Virtual repo candidate failed ${abs}: ${getErrorMessage(e)}`); }
+					if(virt){ repositories.push(virt); await logger.info(`Created virtual repository for external catalog: ${virt.catalogPath}`); break; }
+				} catch (e:any) { await logger.warn(`Virtual repo candidate failed ${abs}: ${getErrorMessage(e)}`); }
 			}
 		}
 
 		async function refresh() {
 			try {
-				log('Refresh started');
+				logger.info('Refresh started');
 				repositories = await discoverRepositories(runtimeDirName);
 				await ensureVirtualRepoIfNeeded();
 				if (!currentRepo || !repositories.find(r => r.id === currentRepo?.id)) {
 					currentRepo = repositories[0];
 					if(!currentRepo){
-						await log('No repositories detected after refresh.');
+						await logger.info('No repositories detected after refresh.');
 					}
 				}
 				await loadResources();
 				// No-op: hats are discovered on demand when command is invoked
-				log(`Refresh complete. Repo count=${repositories.length} resources=${resources.length}`);
-				try { updateStatus(); } catch { /* ignore */ }
+				logger.info(`Refresh complete. Repo count=${repositories.length} resources=${resources.length}`);
+				try { updateStatus(); } catch (error) { 
+					logger.warn(`Failed to update status: ${error}`);
+				}
 			} catch(e:any){
-				log('Refresh error: ' + (e?.stack || e));
+				logger.error('Refresh error: ' + (e?.stack || e));
 				vscode.window.showErrorMessage('ContextShare refresh failed: ' + getErrorMessage(e));
 			}
 		}
 
-		log('Activating ContextShare extension');
+		logger.info('Activating ContextShare extension');
 
 			const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 50);
 			status.command = 'copilotCatalog.refresh';
@@ -518,20 +515,20 @@ export async function activate(context: vscode.ExtensionContext) {
 					workspaceFolders: (vscode.workspace.workspaceFolders||[]).map((f: vscode.WorkspaceFolder)=>redact(f.uri.fsPath)),
 					runtimeDirName
 				};
-				await log('Diagnostics:\n'+ JSON.stringify(diag,null,2));
+				await logger.info('Diagnostics:\n'+ JSON.stringify(diag,null,2));
 				vscode.window.showInformationMessage('ContextShare diagnostics written to output channel.');
 			}),
 			vscode.commands.registerCommand('copilotCatalog.dumpResources', async () => {
-				await log(`DumpResources: count=${resources.length}`);
+				await logger.info(`DumpResources: count=${resources.length}`);
 				for(const r of resources.slice(0,200)){
-					await log(` - ${r.category} ${r.state} ${r.origin} :: ${r.absolutePath}`);
+					await logger.info(` - ${r.category} ${r.state} ${r.origin} :: ${r.absolutePath}`);
 				}
 				vscode.window.showInformationMessage('Resource list written to log');
 			}),
 			vscode.commands.registerCommand('copilotCatalog.activate', async (item: any) => {
 				const res = pickResourceFromItem(item);
 				if (!res) return;
-				await log(`Command.activate start id=${res.id} cat=${res.category} origin=${(res as any).origin} state=${res.state}`);
+				await logger.info(`Command.activate start id=${res.id} cat=${res.category} origin=${(res as any).origin} state=${res.state}`);
 				// If activating over a modified runtime copy, warn user before overwriting
 				if(res.state === ResourceState.MODIFIED){
 					const runtimePath = resourceService.getTargetPath(res);
@@ -543,26 +540,26 @@ export async function activate(context: vscode.ExtensionContext) {
 					if(!choice || choice === 'Cancel') return;
 					if(choice === 'Preserve as New File'){
 						try {
-							const newPath = await preserveFileWithVariant(runtimePath, log);
+							const newPath = await preserveFileWithVariant(runtimePath, logger.info.bind(logger));
 							vscode.window.showInformationMessage(`Preserved as: ${path.basename(newPath)}`);
 							// Force refresh to show the new user resource in the tree
 							setTimeout(async () => {
 								await refresh();
 							}, 500);
 						} catch(e:any){ 
-							await handleErrorWithNotification(e, 'preserve file', log, vscode);
+							await handleErrorWithNotification(e, 'preserve file', logger.info.bind(logger), vscode);
 						}
 					}
 				}
 				const result = await resourceService.activateResource(res);
-				await log(`Command.activate result success=${result.success} msg=${result.message} details=${result.details||''}`);
+				await logger.info(`Command.activate result success=${result.success} msg=${result.message} details=${result.details||''}`);
 				refreshAllTrees();
 				updateStatus();
 			}),
 			vscode.commands.registerCommand('copilotCatalog.deactivate', async (item: any) => {
 				const res = pickResourceFromItem(item);
 				if (!res) return;
-				await log(`Command.deactivate start id=${res.id} cat=${res.category} origin=${(res as any).origin} state=${res.state}`);
+				await logger.info(`Command.deactivate start id=${res.id} cat=${res.category} origin=${(res as any).origin} state=${res.state}`);
 				// If modified, offer preservation choices
 				if(res.state === ResourceState.MODIFIED){
 					const choice = await vscode.window.showWarningMessage('Resource has local modifications. How would you like to proceed?', { modal:true }, 'Discard Changes', 'Preserve as New', 'Cancel');
@@ -571,19 +568,19 @@ export async function activate(context: vscode.ExtensionContext) {
 						// Copy current runtime file to a new user resource name before deactivation
 						const runtimePath = resourceService.getTargetPath(res);
 						try {
-							const newPath = await preserveFileWithVariant(runtimePath, log);
+							const newPath = await preserveFileWithVariant(runtimePath, logger.info.bind(logger));
 							vscode.window.showInformationMessage(`Preserved as: ${path.basename(newPath)}`);
 							// Force refresh to show the new user resource in the tree
 							setTimeout(async () => {
 								await refresh();
 							}, 500);
 						} catch(e:any){ 
-							await handleErrorWithNotification(e, 'preserve file', log, vscode);
+							await handleErrorWithNotification(e, 'preserve file', logger.info.bind(logger), vscode);
 						}
 					}
 				}
 				const result = await resourceService.deactivateResource(res);
-				await log(`Command.deactivate result success=${result.success} msg=${result.message} details=${result.details||''}`);
+				await logger.info(`Command.deactivate result success=${result.success} msg=${result.message} details=${result.details||''}`);
 				res.state = await resourceService.getResourceState(res);
 				refreshAllTrees();
 				updateStatus();
@@ -638,7 +635,7 @@ export async function activate(context: vscode.ExtensionContext) {
 						openLabel: 'Select base folder',
 						defaultUri: wsDefault
 					});
-				} catch(e:any){ await log('showOpenDialog failed (createTemplateCatalog), falling back to manual: ' + getErrorMessage(e)); }
+				} catch(e:any){ await logger.warn('showOpenDialog failed (createTemplateCatalog), falling back to manual: ' + getErrorMessage(e)); }
 				if(picked && picked.length){ baseUri = picked[0]; }
 				else {
 					// fallback to manual path input
@@ -744,7 +741,9 @@ export async function activate(context: vscode.ExtensionContext) {
 							const newCatalogDirectories = {...currentCatalogDirectories, [root]: ''};
 							await cfg.update('copilotCatalog.catalogDirectory', newCatalogDirectories, vscode.ConfigurationTarget.WorkspaceFolder);
 							vscode.window.showInformationMessage('Configured ContextShare to use the new template directory.');
-						} catch { /* ignore */ }
+						} catch (error) { 
+							await logger.warn(`Failed to update catalog directory configuration: ${getErrorMessage(error)}`);
+						}
 					}
 					await refresh();
 				} catch(e:any){ vscode.window.showErrorMessage('Failed to create template catalog: ' + getErrorMessage(e)); }
@@ -758,7 +757,7 @@ export async function activate(context: vscode.ExtensionContext) {
 						{ label: 'Set Target Workspace…', action: 'setTarget' }
 					], { placeHolder: 'Configure catalog directories and settings' });
 				} catch(e:any){
-					await log('showQuickPick failed (configureSettings), falling back to manual selection: ' + getErrorMessage(e));
+					await logger.warn('showQuickPick failed (configureSettings), falling back to manual selection: ' + getErrorMessage(e));
 					const choice = await vscode.window.showInputBox({ prompt: 'Type one: openSettings | addDirectory | setTarget' });
 					if(!choice) return;
 					const v = choice.trim().toLowerCase();
@@ -773,7 +772,7 @@ export async function activate(context: vscode.ExtensionContext) {
 					try {
 						await vscode.commands.executeCommand('workbench.action.openSettings', 'copilotCatalog');
 					} catch(e:any){
-						await log('openSettings UI failed, falling back to settings.json: ' + getErrorMessage(e));
+						await logger.warn('openSettings UI failed, falling back to settings.json: ' + getErrorMessage(e));
 						const ws = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 						if(ws){
 							const settingsPath = path.join(ws, '.vscode', 'settings.json');
@@ -781,7 +780,7 @@ export async function activate(context: vscode.ExtensionContext) {
 								await fs.mkdir(path.dirname(settingsPath), { recursive: true });
 								if(!(await fileService.pathExists(settingsPath))){ await fs.writeFile(settingsPath, '{\n}\n'); }
 								await vscode.window.showTextDocument(vscode.Uri.file(settingsPath));
-							} catch(err:any){ await log('Failed to open settings.json: ' + (err?.message||err)); }
+							} catch(err:any){ await logger.warn('Failed to open settings.json: ' + (err?.message||err)); }
 						}
 					}
 					return;
@@ -791,7 +790,7 @@ export async function activate(context: vscode.ExtensionContext) {
 					let chosen: vscode.Uri[] | undefined;
 					try {
 						chosen = await vscode.window.showOpenDialog({ canSelectFiles: false, canSelectFolders: true, canSelectMany: false, openLabel: 'Select catalog directory' });
-					} catch(e:any){ await log('showOpenDialog failed (addDirectory), falling back to manual: ' + getErrorMessage(e)); }
+					} catch(e:any){ await logger.warn('showOpenDialog failed (addDirectory), falling back to manual: ' + getErrorMessage(e)); }
 					let val: string | undefined;
 					if(chosen && chosen.length){ val = chosen[0].fsPath; }
 					else {
@@ -824,10 +823,10 @@ export async function activate(context: vscode.ExtensionContext) {
 							try { json = JSON.parse(await fs.readFile(settingsPath,'utf8')); } catch { /* create new */ }
 							json['copilotCatalog.catalogDirectory'] = newCatalogDirectories;
 							await fs.writeFile(settingsPath, JSON.stringify(json,null,2));
-							await log(`addDirectory(dev): wrote settings.json directly (${Object.keys(newCatalogDirectories).length} entries)`);
+							await logger.info(`addDirectory(dev): wrote settings.json directly (${Object.keys(newCatalogDirectories).length} entries)`);
 							vscode.window.showInformationMessage(`Added catalog directory: ${val}`);
 						} catch(e:any){
-							await log('addDirectory(dev): direct settings.json write failed: ' + getErrorMessage(e));
+							await logger.warn('addDirectory(dev): direct settings.json write failed: ' + getErrorMessage(e));
 							vscode.window.showErrorMessage('Failed to write settings.json for catalog directory. See log.');
 						}
 					} else {
@@ -838,7 +837,7 @@ export async function activate(context: vscode.ExtensionContext) {
 					let chosen: vscode.Uri[] | undefined;
 					try {
 						chosen = await vscode.window.showOpenDialog({ canSelectFiles: false, canSelectFolders: true, canSelectMany: false, openLabel: 'Select target workspace folder' });
-					} catch(e:any){ await log('showOpenDialog failed (setTarget), falling back to manual: ' + getErrorMessage(e)); }
+					} catch(e:any){ await logger.warn('showOpenDialog failed (setTarget), falling back to manual: ' + getErrorMessage(e)); }
 					let val: string | undefined;
 					if(chosen && chosen.length){ val = chosen[0].fsPath; }
 					else {
@@ -854,7 +853,7 @@ export async function activate(context: vscode.ExtensionContext) {
 					const singleRoot = (vscode.workspace.workspaceFolders?.length || 0) === 1;
 					let updated = false;
 					try {
-						await log(`setTarget(dev): attempting update path=${val||'(clear)'} singleRoot=${singleRoot} folderMatch=${!!targetWorkspaceFolder}`);
+						await logger.info(`setTarget(dev): attempting update path=${val||'(clear)'} singleRoot=${singleRoot} folderMatch=${!!targetWorkspaceFolder}`);
 						if(targetWorkspaceFolder && !singleRoot){
 							await vscode.workspace.getConfiguration(undefined, targetWorkspaceFolder.uri)
 								.update('copilotCatalog.targetWorkspace', val, vscode.ConfigurationTarget.WorkspaceFolder);
@@ -864,13 +863,13 @@ export async function activate(context: vscode.ExtensionContext) {
 							updated = true;
 						}
 					} catch(e:any){
-						await log('setTarget(dev): primary update failed: ' + getErrorMessage(e));
+						await logger.warn('setTarget(dev): primary update failed: ' + getErrorMessage(e));
 						if(!updated){
 							try {
 								await cfg.update('copilotCatalog.targetWorkspace', val, vscode.ConfigurationTarget.Workspace);
 								updated = true;
-								await log('setTarget(dev): fallback workspace update succeeded');
-							} catch(e2:any){ await log('setTarget(dev): fallback workspace update failed: ' + getErrorMessage(e2)); }
+								await logger.info('setTarget(dev): fallback workspace update succeeded');
+							} catch(e2:any){ await logger.warn('setTarget(dev): fallback workspace update failed: ' + getErrorMessage(e2)); }
 						}
 					}
 					if(!updated){
@@ -898,7 +897,7 @@ export async function activate(context: vscode.ExtensionContext) {
 					allResources.filter(r => r.catalogName === catalogFilter) : 
 					allResources;
 				const res = await hatService.applyHat(currentRepo, currentResources, pick.hat, { exclusive });
-				await log(`Applied hat ${pick.hat.name}: activated=${res.activated} deactivated=${res.deactivated} missing=${res.missing.length} errors=${res.errors.length}`);
+				await logger.info(`Applied hat ${pick.hat.name}: activated=${res.activated} deactivated=${res.deactivated} missing=${res.missing.length} errors=${res.errors.length}`);
 				if(res.errors.length){ vscode.window.showWarningMessage(`Hat applied with errors. Activated ${res.activated}, Deactivated ${res.deactivated}. Missing: ${res.missing.length}.`); } else { vscode.window.showInformationMessage(`Hat applied. Activated ${res.activated}, Deactivated ${res.deactivated}. Missing: ${res.missing.length}.`); }
 				await loadResources(); updateStatus();
 			}),
@@ -911,7 +910,7 @@ export async function activate(context: vscode.ExtensionContext) {
 					allResources.filter(r => r.catalogName === catalogFilter) : 
 					allResources;
 				const hat = await hatService.createHatFromActive(name, desc, currentResources, 'workspace', currentRepo);
-				await log(`Created workspace hat ${hat.name} with ${hat.resources.length} resources`);
+				await logger.info(`Created workspace hat ${hat.name} with ${hat.resources.length} resources`);
 				vscode.window.showInformationMessage(`Saved Hat "${hat.name}" to workspace (.vscode/copilot-hats.json).`);
 			}),
 			vscode.commands.registerCommand('copilotCatalog.hats.createUser', async () => {
@@ -922,7 +921,7 @@ export async function activate(context: vscode.ExtensionContext) {
 					allResources.filter(r => r.catalogName === catalogFilter) : 
 					allResources;
 				const hat = await hatService.createHatFromActive(name, desc, currentResources, 'user');
-				await log(`Created user hat ${hat.name} with ${hat.resources.length} resources`);
+				await logger.info(`Created user hat ${hat.name} with ${hat.resources.length} resources`);
 				vscode.window.showInformationMessage(`Saved Hat "${hat.name}" to user settings (global storage).`);
 			}),
 			vscode.commands.registerCommand('copilotCatalog.hats.delete', async () => {
@@ -985,7 +984,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				try {
 					await vscode.commands.executeCommand('workbench.action.openSettings', 'copilotCatalog');
 				} catch(e:any){
-					await log('openSettings command failed, falling back to settings.json: ' + getErrorMessage(e));
+					await logger.warn('openSettings command failed, falling back to settings.json: ' + getErrorMessage(e));
 					const ws = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 					if(ws){
 						const settingsPath = path.join(ws, '.vscode', 'settings.json');
@@ -993,7 +992,7 @@ export async function activate(context: vscode.ExtensionContext) {
 							await fs.mkdir(path.dirname(settingsPath), { recursive: true });
 							if(!(await fileService.pathExists(settingsPath))){ await fs.writeFile(settingsPath, '{\n}\n'); }
 							await vscode.window.showTextDocument(vscode.Uri.file(settingsPath));
-						} catch(err:any){ await log('Failed to open settings.json: ' + (err?.message||err)); }
+						} catch(err:any){ await logger.warn('Failed to open settings.json: ' + (err?.message||err)); }
 					}
 				}
 			}),
@@ -1028,7 +1027,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				let selectedPath: string | undefined;
 				if(chosen._kind === 'browse'){
 					let picked: vscode.Uri[] | undefined;
-					try { picked = await vscode.window.showOpenDialog({ canSelectFiles:false, canSelectFolders:true, canSelectMany:false, openLabel:'Select catalog directory' }); } catch(e:any){ await log('showOpenDialog failed (addCatalogDirectory browse): ' + getErrorMessage(e)); }
+					try { picked = await vscode.window.showOpenDialog({ canSelectFiles:false, canSelectFolders:true, canSelectMany:false, openLabel:'Select catalog directory' }); } catch(e:any){ await logger.warn('showOpenDialog failed (addCatalogDirectory browse): ' + getErrorMessage(e)); }
 					if(picked && picked.length){ selectedPath = picked[0].fsPath; }
 				} else if(chosen._kind === 'manual'){
 					const manual = await vscode.window.showInputBox({ prompt: 'Path to catalog directory (absolute or relative to workspace)' });
@@ -1058,7 +1057,7 @@ export async function activate(context: vscode.ExtensionContext) {
 					}
 					vscode.window.showInformationMessage(`Added catalog directory: ${selectedPath}`);
 				} catch(e:any){
-					await log('addCatalogDirectory: failed to write settings via API: ' + getErrorMessage(e));
+					await logger.warn('addCatalogDirectory: failed to write settings via API: ' + getErrorMessage(e));
 					vscode.window.showErrorMessage('Failed to update settings automatically. Opening settings.json for manual edit.');
 					// Fallback: open settings.json so user can manually edit
 					const fallbackFolder = owningFolder || wsFolders[0];
@@ -1068,7 +1067,7 @@ export async function activate(context: vscode.ExtensionContext) {
 							await fs.mkdir(path.dirname(settingsPath), { recursive: true });
 							if(!(await fileService.pathExists(settingsPath))){ await fs.writeFile(settingsPath, JSON.stringify({ 'copilotCatalog.catalogDirectory': newMap }, null, 2)); }
 							vscode.window.showTextDocument(vscode.Uri.file(settingsPath));
-						} catch(err:any){ await log('addCatalogDirectory: fallback open settings.json failed: ' + getErrorMessage(err)); }
+						} catch(err:any){ await logger.warn('addCatalogDirectory: fallback open settings.json failed: ' + getErrorMessage(err)); }
 					}
 				}
 				await refresh();
@@ -1078,9 +1077,9 @@ export async function activate(context: vscode.ExtensionContext) {
 		// Perform the initial refresh after registration so commands are available even if refresh throws in headless/tunnel
 		try {
 			await refresh();
-			log('Initial refresh completed inside activate()');
+			logger.info('Initial refresh completed inside activate()');
 		} catch(e:any){
-			log('Initial refresh failed (continuing with commands registered): ' + getErrorMessage(e));
+			logger.warn('Initial refresh failed (continuing with commands registered): ' + getErrorMessage(e));
 		}
 		try { updateStatus(); } catch {}
 
@@ -1116,7 +1115,7 @@ export async function activate(context: vscode.ExtensionContext) {
 				}
 				resourceService.setRuntimeDirectoryName(cfg.get<string>('copilotCatalog.runtimeDirectory', '.github'));
 				resourceService.setRemoteCacheTtl(cfg.get<number>('copilotCatalog.remoteCacheTtlSeconds', 300));
-				await log('Configuration change: directories updated, refreshing...');
+				await logger.info('Configuration change: directories updated, refreshing...');
 				refresh();
 			}
 		}));
