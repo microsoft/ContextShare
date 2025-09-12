@@ -17,7 +17,12 @@ async function main() {
             extensionTestsPath,
             launchArgs: [
                 '--no-sandbox',
-                '--disable-gpu-sandbox'
+                '--disable-gpu-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-gpu',
+                '--disable-software-rasterizer',
+                '--headless',
+                '--remote-debugging-port=9222'
             ]
         });
     } catch (err) {
