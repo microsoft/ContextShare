@@ -19,9 +19,10 @@ class Logger {
     if(options?.channelName) this.channelName = options.channelName;
     try{
       this.channel = vscode.window.createOutputChannel(this.channelName);
-    }catch{
+    }catch(err){
       // Not running in VS Code environment — leave channel undefined
       this.channel = undefined;
+      console.error(`[Logger] Failed to create output channel "${this.channelName}":`, err);
     }
     this.enableFile = !!options?.enableFileLogging;
     if(options?.filePath) this.filePath = options.filePath;
