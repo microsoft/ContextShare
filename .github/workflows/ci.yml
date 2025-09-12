@@ -43,16 +43,16 @@ jobs:
       run: npm run build
 
     - name: Run unit tests
-      run: npm run test:unit
+      run: xvfb-run -a npm run test:unit
 
     - name: Run integration tests
-      run: npm run test:integration
+      run: xvfb-run -a npm run test:integration
 
     - name: Run performance tests
-      run: npm run test:performance
+      run: xvfb-run -a npm run test:performance
 
     - name: Run security tests
-      run: npm run test:security
+      run: xvfb-run -a npm run test:security
 
     - name: Check for TypeScript errors
       run: npx tsc --noEmit
