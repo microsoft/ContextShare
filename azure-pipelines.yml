@@ -86,11 +86,10 @@ steps:
       xdg-utils
   displayName: 'Install Linux dependencies'
 
-  - script: |
+- script: |
     # Run tests with xvfb-run and proper environment variables
     xvfb-run -a npm test
   displayName: 'Run tests'
-
   env:
     ELECTRON_DISABLE_SANDBOX: '1'
     ELECTRON_NO_SANDBOX: '1'
