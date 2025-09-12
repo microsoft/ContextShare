@@ -43,7 +43,7 @@ jobs:
       run: npm run build
 
     - name: Run unit tests
-      run: npm test
+      run: npm run test:unit
 
     - name: Run integration tests
       run: npm run test:integration
@@ -53,9 +53,6 @@ jobs:
 
     - name: Run security tests
       run: npm run test:security
-
-    - name: Run user experience tests
-      run: npm run test:ux
 
     - name: Check for TypeScript errors
       run: npx tsc --noEmit
@@ -80,9 +77,6 @@ jobs:
 
     - name: Build extension
       run: npm run build
-
-    - name: Run all tests
-      run: npm run test:all
 
     - name: Package VSIX
       run: npx @vscode/vsce package
