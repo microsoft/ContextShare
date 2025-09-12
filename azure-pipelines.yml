@@ -46,6 +46,7 @@ steps:
   displayName: 'Compile TypeScript'
 
 - script: |
+    # Install required dependencies for headless VS Code
     sudo apt-get update
     sudo apt-get install -y \
       xvfb \
@@ -87,31 +88,13 @@ steps:
   displayName: 'Install Linux dependencies'
 
 - script: |
-    # Debug: Check if xvfb is available
-    which xvfb-run || echo "xvfb-run not found"
-    
-    # Debug: Check DISPLAY variable
-    echo "DISPLAY before: $DISPLAY"
-    
-    # Start xvfb manually and set DISPLAY
-    export DISPLAY=:99
-    Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
-    sleep 3
-    
-    # Debug: Verify xvfb is running
-    ps aux | grep Xvfb | grep -v grep || echo "Xvfb not running"
-    
-    # Run tests with explicit DISPLAY
-    echo "DISPLAY after: $DISPLAY"
-    npm test
+    # Run tests with xvfb-run for headless execution
+    xvfb-run -a npm test
   displayName: 'Run tests'
   env:
-    DISPLAY: ':99'
-    ELECTRON_DISABLE_SANDBOX: '1'
-    ELECTRON_NO_SANDBOX: '1'
-    ELECTRON_EXTRA_LAUNCH_ARGS: '--disable-gpu --disable-software-rasterizer --disable-dev-shm-usage --no-sandbox'
     CI: 'true'
     HEADLESS: 'true'
+    ELECTRON_DISABLE_SANDBOX: '1'
 
 # Archive Component Governance results
 - task: PublishBuildArtifacts@1
