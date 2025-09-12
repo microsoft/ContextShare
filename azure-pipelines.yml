@@ -1,0 +1,57 @@
+# Azure Pipeline for Component Governance
+# This pipeline is required for Microsoft open source projects to ensure component compliance
+# See: https://docs.opensource.microsoft.com/using/#requirements-for-using-open-source
+
+trigger:
+- main
+- develop
+
+pool:
+  vmImage: 'ubuntu-22.04'
+
+variables:
+  # Disable telemetry for privacy compliance
+  DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
+  POWERSHELL_TELEMETRY_OPTOUT: 'true'
+
+steps:
+- task: NodeTool@0
+  displayName: 'Install Node.js'
+  inputs:
+    versionSpec: '20.x'
+
+# Component Detection is automatically injected by Microsoft's Azure DevOps organization
+# This step ensures Component Governance registration for all dependencies
+- task: ComponentGovernanceComponentDetection@0
+  displayName: 'Component Detection'
+  inputs:
+    scanType: 'Register'
+    verbosity: 'Verbose'
+    alertWarningLevel: 'High'
+    failOnAlert: false  # Set to true after resolving initial alerts
+
+# Optional: Run additional security checks
+- script: npm ci
+  displayName: 'Install dependencies'
+
+- script: npm run security:audit
+  displayName: 'Security audit'
+  continueOnError: true
+
+- script: npm run license:check
+  displayName: 'License compliance check'
+
+# Build and test to ensure package is functional
+- script: npm run build
+  displayName: 'Build extension'
+
+- script: npm test
+  displayName: 'Run tests'
+
+# Archive Component Governance results
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish CG results'
+  inputs:
+    PathtoPublish: '$(Agent.BuildDirectory)'
+    ArtifactName: 'ComponentGovernance'
+  condition: always()
