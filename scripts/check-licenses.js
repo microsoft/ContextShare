@@ -56,7 +56,9 @@ const REJECTED_LICENSES = [
 const ACCEPTABLE_IN_EXPRESSIONS = [
     '(MIT OR WTFPL)',
     '(BSD-2-Clause OR MIT OR Apache-2.0)',
-    '(MIT OR CC0-1.0)'
+    '(MIT OR CC0-1.0)',
+    '(MIT OR GPL-3.0-or-later)',
+    '(MIT AND Zlib)'
 ];
 
 function analyzeLicenses() {
