@@ -22,9 +22,7 @@ async function main() {
                 '--disable-gpu',
                 '--disable-software-rasterizer'
             ],
-            // Additional options for headless testing
-            version: 'stable',
-            platform: 'linux'
+            version: 'stable'
         });
     } catch (err) {
         console.error('Failed to run tests');
