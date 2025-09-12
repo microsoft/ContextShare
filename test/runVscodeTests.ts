@@ -11,16 +11,10 @@ async function main() {
         // Passed to --extensionTestsPath
         const extensionTestsPath = path.resolve(__dirname, './runTest');
 
-        // Enhanced launch arguments for better CI compatibility
+        // Minimal launch arguments for CI compatibility
         const launchArgs = [
             '--no-sandbox',
-            '--disable-gpu-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-gpu',
-            '--disable-software-rasterizer',
-            '--disable-web-security',
-            '--disable-features=VizDisplayCompositor',
-            '--headless' // Always use headless mode for testing
+            '--disable-dev-shm-usage'
         ];
 
         // Download VS Code, unzip it and run the integration test
