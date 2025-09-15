@@ -2,7 +2,7 @@
   "name": "contextshare",
   "displayName": "ContextShare",
   "description": "Manage AI assistant catalog resources (chat modes, instructions, prompts, tasks, MCP) across multiple repositories inside VS Code.",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "publisher": "ContextShare",
   "engines": {
     "vscode": "^1.90.0"
