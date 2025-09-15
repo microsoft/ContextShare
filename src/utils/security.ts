@@ -132,12 +132,11 @@ export function validateMcpConfig(obj: any): { valid: boolean; errors: string[] 
 export function validateTaskConfig(obj: any): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
   
-  if (!obj || typeof obj !== 'object') {
-    return { valid: false, errors: ['Task configuration must be an object'] };
+  if (!obj) {
+    return { valid: false, errors: ['Task configuration must be an object or array'] };
   }
-  
-  // Check for tasks array or single task
-  const tasks = Array.isArray(obj.tasks) ? obj.tasks : 
+  const tasks = Array.isArray(obj) ? obj :
+                Array.isArray(obj.tasks) ? obj.tasks : 
                 (obj.vscodeTask || obj.vsCodeTask) ? [obj.vscodeTask || obj.vsCodeTask] :
                 (obj.type || obj.label) ? [obj] : [];
   

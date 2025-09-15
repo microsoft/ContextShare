@@ -691,6 +691,17 @@ export class ResourceService implements IResourceService {
       (resource as any).disabled = true;
       resource.state = ResourceState.INACTIVE;
       this.log(`[ResourceService] disableUserResource ${resource.id} -> ${newPath}`);
+      
+      // If task, also remove from .vscode/tasks.json based on metadata
+      if(resource.category === ResourceCategory.TASKS){
+        try { 
+          const removed = await this.removeVsCodeTasks(resource); 
+          this.log(`[ResourceService] disableUserResource tasks.json cleanup removed=${removed}`); 
+        } catch(e:any){ 
+          this.log(`[ResourceService] disableUserResource tasks.json cleanup failed: ${sanitizeErrorMessage(e)}`); 
+        }
+      }
+      
       return { success:true, resource, message:'Disabled user resource' };
       
     } catch(e:any){ 
@@ -715,6 +726,17 @@ export class ResourceService implements IResourceService {
       (resource as any).disabled = false;
       resource.state = ResourceState.ACTIVE;
       this.log(`[ResourceService] enableUserResource ${resource.id} -> ${newPath}`);
+      
+      // If this is a VS Code task, also merge into .vscode/tasks.json
+      if(resource.category === ResourceCategory.TASKS){
+        try {
+          const { added } = await this.mergeVsCodeTasks(resource);
+          this.log(`[ResourceService] enableUserResource tasks.json merge added=${added}`);
+        } catch(e:any){ 
+          this.log(`[ResourceService] enableUserResource tasks.json merge failed: ${sanitizeErrorMessage(e)}`); 
+        }
+      }
+      
       return { success:true, resource, message:'Enabled user resource' };
       
     } catch(e:any){ 
@@ -757,11 +779,52 @@ export class ResourceService implements IResourceService {
     try { 
       const raw = await this.fileService.readFile(p); 
       const cleaned = this.stripJsonComments(raw||'{}');
-      return JSON.parse(cleaned); 
+      try {
+        return JSON.parse(cleaned);
+      } catch (primary) {
+        // Fallback: remove trailing commas (JSONC style)
+        const withoutTrailing = this.removeTrailingCommas(cleaned);
+        try {
+          const parsed = JSON.parse(withoutTrailing);
+          this.log(`[ResourceService] readJsonFileSafe recovered with trailing-comma fallback for ${path.basename(p)}`);
+          return parsed;
+        } catch (secondary) {
+          this.log(`[ResourceService] readJsonFileSafe failed for ${path.basename(p)} primary=${sanitizeErrorMessage(primary)} secondary=${sanitizeErrorMessage(secondary)}`);
+          return {};
+        }
+      }
     } catch (e) { 
       this.log(`[ResourceService] readJsonFileSafe failed for ${path.basename(p)}: ${sanitizeErrorMessage(e)}`);
       return {}; 
     } 
+  }
+  private removeTrailingCommas(json: string): string {
+    // Parse character by character tracking strings to safely drop commas before } or ]
+    let out = '';
+    let inString = false; let escape = false;
+    for(let i=0;i<json.length;i++){
+      const ch = json[i];
+      out += ch;
+      if(inString){
+        if(escape){ escape = false; continue; }
+        if(ch === '\\') { escape = true; continue; }
+        if(ch === '"') { inString = false; continue; }
+      } else {
+        if(ch === '"'){ inString = true; continue; }
+        if(ch === ','){
+          // Look ahead (excluding whitespace & comments already stripped) to find next non-ws char
+            let j = i+1; while(j < json.length && /\s/.test(json[j])) j++;
+            if(j < json.length){
+              const nxt = json[j];
+              if(nxt === '}' || nxt === ']'){
+                // Remove the comma we just appended
+                out = out.slice(0, -1);
+              }
+            }
+        }
+      }
+    }
+    return out;
   }
   private async writeJsonFilePretty(p: string, obj: any): Promise<void> {
     await this.fileService.ensureDirectory(path.dirname(p));
@@ -771,7 +834,8 @@ export class ResourceService implements IResourceService {
   private async writeTasksMeta(resource: Resource, obj: any): Promise<void> { await this.writeJsonFilePretty(this.getTasksMetaPath(resource), obj); }
 
   private extractVsCodeTasks(obj: any): any[] {
-    if(!obj || typeof obj !== 'object') return [];
+    if(!obj) return [];
+    if(Array.isArray(obj)) return obj.filter(t => t && typeof t === 'object');
     if(Array.isArray(obj.tasks)) return obj.tasks.filter((t:any)=> t && typeof t==='object');
     if(obj.version && Array.isArray(obj.tasks)) return obj.tasks.filter((t:any)=> t && typeof t==='object');
     if(obj.vscodeTask && typeof obj.vscodeTask==='object') return [obj.vscodeTask];
