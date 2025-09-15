@@ -26,28 +26,24 @@ class UIResponseMonitor {
     fn: () => Promise<T>
   ): Promise<T> {
     const startTime = Date.now();
-    
+    let success = false;
+    let result: T;
+    let error: any;
     try {
-      const result = await fn();
-      const endTime = Date.now();
-      
-      this.responseTimes.push({
-        operation,
-        duration: endTime - startTime,
-        success: true
-      });
-      
+      result = await fn();
+      success = true;
       return result;
-    } catch (error) {
+    } catch (err) {
+      error = err;
+      success = false;
+      throw err;
+    } finally {
       const endTime = Date.now();
-      
       this.responseTimes.push({
         operation,
         duration: endTime - startTime,
-        success: false
+        success
       });
-      
-      throw error;
     }
   }
   
