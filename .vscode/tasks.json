@@ -75,6 +75,13 @@
         "install"
       ],
       "group": "build"
+    },
+    {
+      "type": "npm",
+      "script": "test:security",
+      "problemMatcher": [],
+      "label": "npm: test:security",
+      "detail": "node dist/test/security.integration.test.js"
     }
   ]
 }

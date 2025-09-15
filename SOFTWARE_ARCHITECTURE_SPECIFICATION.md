@@ -39,19 +39,23 @@ ContextShare is a Visual Studio Code extension designed to manage AI assistant c
 ### 1.2 System Scope
 
 The extension operates within the VS Code ecosystem as a client-side tool that:
-- Discovers AI resources from local and remote catalogs
-- Manages resource activation/deactivation states
-- Provides a tree-based UI for resource management
+- Discovers AI resources from multiple local and remote catalogs
+- Manages resource activation/deactivation states with advanced merging capabilities
+- Provides specialized tree-based UI views for different resource categories
 - Supports preset configurations ("Hats") for resource groups
-- Ensures secure handling of remote content and user modifications
+- Handles user-created resources with enable/disable functionality
+- Ensures secure handling of remote content with comprehensive validation
+- Integrates with VS Code's native task and MCP systems
 
 ### 1.3 Key Architectural Decisions
 
 - **Service-Oriented Architecture**: Core functionality separated into distinct services
 - **Repository Pattern**: Abstracted file system operations through service interfaces
-- **Tree Data Provider Pattern**: Native VS Code UI integration
-- **State Management**: Centralized resource state tracking
-- **Security-First Design**: Input validation and safe file operations
+- **Multi-Provider Tree Architecture**: Specialized tree providers for different views
+- **Multi-Catalog Support**: Support for multiple catalog sources with filtering
+- **Advanced Resource Merging**: Intelligent merging for MCP and VS Code tasks
+- **User Resource Management**: Full lifecycle management of user-created resources
+- **Security-First Design**: Comprehensive input validation and secure remote handling
 
 ---
 
@@ -62,29 +66,37 @@ The extension operates within the VS Code ecosystem as a client-side tool that:
 ```mermaid
 graph TB
     subgraph "VS Code Environment"
-  CM[ContextShare]
+        CM[ContextShare]
         GC[GitHub Copilot]
         WS[Workspace]
         UI[VS Code UI]
+        VST[VS Code Tasks]
+        VSM[VS Code MCP]
     end
     
     subgraph "External Sources"
         RC[Remote Catalogs]
         LR[Local Repositories]
+        MC[Multiple Catalogs]
     end
     
     subgraph "File System"
-        CC[Copilot Catalog]
+        CC[Copilot Catalogs]
         RT[Runtime Directory]
+        UR[User Resources]
     end
     
     CM --> |Manages| CC
     CM --> |Activates to| RT
     CM --> |Fetches from| RC
     CM --> |Discovers in| LR
+    CM --> |Supports| MC
     CM --> |Integrates with| UI
+    CM --> |Merges to| VST
+    CM --> |Merges to| VSM
     GC --> |Consumes| RT
     WS --> |Contains| CC
+    CM --> |Manages| UR
 ```
 
 ### 2.2 Stakeholders
@@ -135,7 +147,9 @@ graph TB
 ```mermaid
 graph TB
     subgraph "Presentation Layer"
-        TV[Tree View Provider]
+        OTP[Overview Tree Provider]
+        CTP[Category Tree Providers]
+        OTP2[Options Tree Provider]
         CC[Command Controllers]
         SP[Status Provider]
     end
@@ -158,7 +172,9 @@ graph TB
         OS[Operating System]
     end
     
-    TV --> RS
+    OTP --> RS
+    CTP --> RS
+    OTP2 --> RS
     CC --> RS
     CC --> HS
     SP --> RS
@@ -186,15 +202,25 @@ graph TB
 - **Implementation**: IFileService interface with FileService implementation
 - **Benefits**: Testability, mock support, platform abstraction
 
-#### 4.2.3 Observer Pattern
+#### 4.2.3 Multi-Provider Pattern
+- **Purpose**: Specialized UI components for different resource categories
+- **Implementation**: CategoryTreeProvider, OverviewTreeProvider, OptionsTreeProvider
+- **Benefits**: Focused functionality, better user experience, maintainability
+
+#### 4.2.4 Observer Pattern
 - **Purpose**: React to configuration and file system changes
 - **Implementation**: VS Code event listeners, tree data provider events
 - **Benefits**: Reactive updates, loose coupling
 
-#### 4.2.4 Command Pattern
+#### 4.2.5 Command Pattern
 - **Purpose**: Encapsulate user actions as commands
 - **Implementation**: VS Code command registration and handlers
 - **Benefits**: Undo capability, macro recording, extensibility
+
+#### 4.2.6 Strategy Pattern
+- **Purpose**: Handle different resource types with specialized activation logic
+- **Implementation**: MCP merging, task integration, file copying strategies
+- **Benefits**: Extensibility, type-specific behavior
 
 ---
 
@@ -216,21 +242,29 @@ graph LR
     end
     
     subgraph "UI Components"
-        CTP[CatalogTreeProvider]
+        OTP[OverviewTreeProvider]
+        CTP[CategoryTreeProvider]
+        OTP2[OptionsTreeProvider]
     end
     
     subgraph "Utilities"
-        NAM[Naming Utils]
+        DIS[Display Utils]
         SEC[Security Utils]
+        NAM[Naming Utils]
+        ERR[Error Utils]
     end
     
     EXT --> RS
     EXT --> HS
+    EXT --> OTP
     EXT --> CTP
+    EXT --> OTP2
     RS --> FS
     HS --> FS
     RS --> SEC
-    HS --> NAM
+    CTP --> DIS
+    OTP --> DIS
+    EXT --> ERR
 ```
 
 ### 5.2 Component Details
@@ -255,32 +289,45 @@ async function loadResources()
 - ResourceService
 - HatService  
 - FileService
-- CatalogTreeProvider
+- OverviewTreeProvider
+- CategoryTreeProvider (multiple instances)
+- OptionsTreeProvider
 
 #### 5.2.2 Resource Service (`services/resourceService.ts`)
 
 **Responsibilities:**
-- Resource discovery from local and remote sources
-- Resource state management (inactive, active, modified)
-- Resource activation/deactivation operations
-- Remote content caching
-- Source override handling
+- Multi-catalog resource discovery from local and remote sources
+- Advanced resource state management (inactive, active, modified)
+- Resource activation/deactivation with specialized merging
+- Remote content caching with security validation
+- Source override handling and root catalog override
+- User resource lifecycle management (enable/disable)
+- MCP configuration merging into .vscode/mcp.json
+- VS Code task integration into .vscode/tasks.json
 
 **Key Functions:**
 ```typescript
 async discoverResources(repository: Repository): Promise<Resource[]>
 async getResourceState(resource: Resource): Promise<ResourceState>
-async activateResource(resource: Resource): Promise<OperationResult>
+async activateResource(resource: Resource, options?: ActivateOptions): Promise<OperationResult>
 async deactivateResource(resource: Resource): Promise<OperationResult>
+async enableUserResource(resource: Resource): Promise<OperationResult>
+async disableUserResource(resource: Resource): Promise<OperationResult>
 setSourceOverrides(overrides: Partial<Record<ResourceCategory,string>>)
 setRootCatalogOverride(root?: string)
+setTargetWorkspaceOverride(path?: string)
+setCurrentWorkspaceRoot(path?: string)
+setRuntimeDirectoryName(name: string)
+setRemoteCacheTtl(seconds: number)
+clearRemoteCache()
 ```
 
 **State Management:**
-- Remote cache with TTL-based expiration
-- Source override configuration
-- Target workspace override
-- Resource state computation
+- Remote cache with TTL-based expiration and size limits
+- Source override configuration and root catalog override
+- Target workspace override and current workspace root
+- Resource state computation with specialized MCP/task handling
+- User resource enable/disable state tracking
 
 #### 5.2.3 Hat Service (`services/hatService.ts`)
 
@@ -324,65 +371,121 @@ interface IFileService {
 }
 ```
 
-#### 5.2.5 Catalog Tree Provider (`tree/catalogTreeProvider.ts`)
+#### 5.2.5 Tree Providers
+
+##### 5.2.5.1 Category Tree Provider (`tree/categoryTreeProvider.ts`)
 
 **Responsibilities:**
-- VS Code tree view data provision
-- Resource visualization and grouping
+- Category-specific resource visualization
+- Resource state display and interaction
 - Icon and context menu management
-- Tree state management and refresh
+- Catalog filtering support
 
 **Key Functions:**
 ```typescript
 getTreeItem(element: CatalogTreeItem): CatalogTreeItem
 getChildren(element?: CatalogTreeItem): CatalogTreeItem[]
 setRepository(repo: Repository, resources: Resource[])
+setCatalogFilter(filter?: string)
 refresh()
 ```
 
+##### 5.2.5.2 Overview Tree Provider (`tree/overviewTreeProvider.ts`)
+
+**Responsibilities:**
+- High-level catalog summary display
+- Resource count and status overview
+- Multi-catalog information display
+- Welcome and guidance messages
+
+##### 5.2.5.3 Options Tree Provider (`tree/optionsTreeProvider.ts`)
+
+**Responsibilities:**
+- Command and action organization
+- Hierarchical menu structure
+- Quick access to common operations
+- Settings and configuration shortcuts
+
 **Tree Structure:**
 ```
-Repository
-├── chatmodes (2/5)
-│   ├── default.chatmode.md [active]
-│   ├── agent-debug.chatmode.md [inactive]
-│   └── user.custom.chatmode.md [user]
-├── • • • • •
-├── instructions (1/3)
-│   ├── general.instructions.md [active]
-│   └── hw-design.instructions.md [modified]
-└── prompts (0/2)
-    ├── init.prompt.md [inactive]
-    └── debug.prompt.md [inactive]
+Overview
+├── Catalog Summary
+│   ├── chatmodes: 2/5 active
+│   ├── instructions: 1/3 active
+│   └── prompts: 0/2 active
+└── Available Catalogs
+    ├── Default
+    └── Shared
+
+Chat Modes
+├── default.chatmode.md [active]
+├── agent-debug.chatmode.md [inactive]
+└── user.custom.chatmode.md [user]
+
+Options
+├── Catalog
+│   ├── Refresh
+│   └── Filter by Catalog
+├── Hats
+│   ├── Apply Hat (Preset)
+│   └── Save Hat from Active
+└── Dev
+    ├── Open Settings
+    └── Create Template Catalog
 ```
 
 ### 5.3 Utility Components
 
-#### 5.3.1 Naming Utilities (`utils/naming.ts`)
+#### 5.3.1 Display Utilities (`utils/display.ts`)
 
-**Purpose:** Generate consistent filenames for user variants
-**Key Function:**
+**Purpose:** User-friendly resource name display and catalog naming
+**Key Functions:**
 ```typescript
-generateUserVariantFilename(original: string, existing: Set<string>): string
+getDisplayName(filename: string, category: ResourceCategory): string
+getCatalogDisplayName(directoryPath: string, displayNameMapping: Record<string, string>): string
 ```
 
-**Naming Convention:**
-- First variant: `user.{original}`
-- Subsequent: `user.{N}.{original}`
+**Features:**
+- Category-specific extension removal
+- Custom catalog display names
+- Fallback naming strategies
 
 #### 5.3.2 Security Utilities (`utils/security.ts`)
 
-**Purpose:** Input validation and sanitization
+**Purpose:** Comprehensive input validation and sanitization
 **Key Functions:**
 ```typescript
 sanitizeFilename(name: string): string
 isSafeRelativeEntry(entry: string): boolean
+isValidHttpsUrl(url: string): boolean
+sanitizeErrorMessage(error: any): string
+validateMcpConfig(obj: any): { valid: boolean; errors: string[] }
+validateTaskConfig(obj: any): { valid: boolean; errors: string[] }
 ```
 
 **Security Measures:**
 - Path traversal prevention
 - Filename sanitization
-- Relative path validation
+- HTTPS-only URL validation
+- Error message sanitization
+- JSON schema validation for MCP and tasks
+
+#### 5.3.3 Error Utilities (`utils/errors.ts`)
+
+**Purpose:** Consistent error handling and user notifications
+**Key Functions:**
+```typescript
+handleErrorWithNotification(error: any, context: string, logger: Function, vscode: any): Promise<void>
+getErrorMessage(error: any): string
+```
+
+#### 5.3.4 File Operations Utilities (`utils/fileOperations.ts`)
+
+**Purpose:** Safe file operations with conflict resolution
+**Key Functions:**
+```typescript
+preserveFileWithVariant(filePath: string, logger: Function): Promise<string>
+```
 
 ---
 
@@ -411,6 +514,7 @@ interface Resource {
   repository: Repository
   state: ResourceState
   origin: ResourceOrigin
+  catalogName?: string     // Name of the catalog source this resource came from
   disabled?: boolean       // For user resources
 }
 
@@ -749,9 +853,17 @@ graph TD
 ```json
 {
   "copilotCatalog.catalogDirectory": {
-    "type": "string",
-    "default": "copilot_catalog",
-    "description": "Name of the catalog directory in repositories"
+    "type": "object",
+    "default": {},
+    "description": "Catalog paths and their display names. Each entry maps a catalog path (absolute path, relative to workspace, or http(s) URL) to its tree display text. If display text is empty, the folder name from the catalog path will be used.",
+    "patternProperties": {
+      ".*": {
+        "type": "string"
+      }
+    },
+    "additionalProperties": {
+      "type": "string"
+    }
   },
   "copilotCatalog.runtimeDirectory": {
     "type": "string", 
@@ -761,37 +873,14 @@ graph TD
   "copilotCatalog.targetWorkspace": {
     "type": "string",
     "default": "",
-    "description": "Explicitly sets the target workspace folder for activating resources"
-  }
-}
-```
-
-#### 9.2.2 Source Configuration
-
-```json
-{
-  "copilotCatalog.source.rootCatalogPath": {
-    "type": "string",
-    "default": "",
-    "description": "Single root path for recursive resource discovery"
+    "description": "Explicitly sets the target workspace folder (absolute path) for activating resources. If set, all active resources will be placed in the runtime directory of this folder."
   },
-  "copilotCatalog.source.chatmodes": {
-    "type": "string", 
-    "default": "",
-    "description": "Override source path/URL for chatmodes"
+  "copilotCatalog.remoteCacheTtlSeconds": {
+    "type": "number",
+    "default": 300,
+    "minimum": 0,
+    "description": "TTL (seconds) for caching remote fetched resources (0 = no cache)"
   },
-  "copilotCatalog.source.instructions": {
-    "type": "string",
-    "default": "",
-    "description": "Override source path/URL for instructions"
-  }
-}
-```
-
-#### 9.2.3 Behavior Settings
-
-```json
-{
   "copilotCatalog.autoRefresh": {
     "type": "boolean",
     "default": true,
@@ -799,41 +888,80 @@ graph TD
   },
   "copilotCatalog.showModificationWarnings": {
     "type": "boolean",
-    "default": true, 
+    "default": true,
     "description": "Warn when activating over modified files"
+  },
+  "copilotCatalog.backupBeforeOverwrite": {
+    "type": "boolean",
+    "default": false,
+    "description": "Create backups before overwriting files"
+  },
+  "copilotCatalog.defaultGrouping": {
+    "type": "string",
+    "enum": ["category", "state", "repository", "flat"],
+    "default": "category",
+    "description": "Default grouping mode for tree view"
   },
   "copilotCatalog.taskMergeStrategy": {
     "type": "string",
     "enum": ["merge", "replace", "skip"],
     "default": "merge",
     "description": "Strategy for handling task conflicts"
+  },
+  "copilotCatalog.enableFileLogging": {
+    "type": "boolean",
+    "default": false,
+    "description": "Mirror extension logs to a file under user global storage (privacy-friendly)."
+  },
+  "copilotCatalog.catalogFilter": {
+    "type": "string",
+    "default": "",
+    "description": "Filter resources by catalog name. Leave empty to show all catalogs."
   }
 }
 ```
+
+#### 9.2.2 Source Configuration
+
+**Note:** Source configuration is now handled through the `copilotCatalog.catalogDirectory` object mapping. Individual category overrides are no longer supported in favor of the more flexible multi-catalog approach.
+
+**Legacy Support:** The extension still supports per-category source overrides for backward compatibility, but the recommended approach is to use the catalog directory mapping.
+
+#### 9.2.3 Behavior Settings
+
+**Note:** Behavior settings are now included in the core settings section above. The extension supports comprehensive configuration options for user experience customization.
 
 ### 9.3 Configuration Change Handling
 
 ```typescript
 vscode.workspace.onDidChangeConfiguration(async (e: vscode.ConfigurationChangeEvent) => {
   const reloadKeys = [
-    'copilotCatalog.catalogDirectory',
     'copilotCatalog.runtimeDirectory'
   ]
   
   const refreshKeys = [
-    'copilotCatalog.source.rootCatalogPath',
+    'copilotCatalog.catalogDirectory',
+    'copilotCatalog.remoteCacheTtlSeconds',
     'copilotCatalog.targetWorkspace'
   ]
   
-  if (reloadKeys.some(k => e.affectsConfiguration(k))) {
-    // Require window reload for structural changes
-    vscode.window.showInformationMessage(
-      'Settings changed that require reload',
+  const needsReload = reloadKeys.some(k => e.affectsConfiguration(k));
+  const needsRefresh = refreshKeys.some(k => e.affectsConfiguration(k));
+
+  if (needsReload) {
+    const selection = await vscode.window.showInformationMessage(
+      'ContextShare settings have changed that require a reload to take effect.',
       'Reload Window'
-    )
-  } else if (refreshKeys.some(k => e.affectsConfiguration(k))) {
-    // Refresh for configuration changes
-    await refresh()
+    );
+    if (selection === 'Reload Window') {
+      vscode.commands.executeCommand('workbench.action.reloadWindow');
+    }
+  } else if (needsRefresh) {
+    const cfg = vscode.workspace.getConfiguration();
+    resourceService.setTargetWorkspaceOverride(cfg.get<string>('copilotCatalog.targetWorkspace'));
+    resourceService.setRuntimeDirectoryName(cfg.get<string>('copilotCatalog.runtimeDirectory', '.github'));
+    resourceService.setRemoteCacheTtl(cfg.get<number>('copilotCatalog.remoteCacheTtlSeconds', 300));
+    await refresh();
   }
 })
 ```
@@ -957,47 +1085,79 @@ async function activateResource(resource: Resource): Promise<OperationResult> {
 
 ### 11.1 Testing Strategy
 
-#### 11.1.1 Test Pyramid
+#### 11.1.1 Test Architecture
 
 ```mermaid
 graph TD
-    subgraph "Test Pyramid"
-        UT[Unit Tests - 70%]
-        IT[Integration Tests - 20%]
-        E2E[End-to-End Tests - 10%]
+    subgraph "Test Categories"
+        UT[Unit Tests - 80%]
+        IT[Integration Tests - 15%]
+        E2E[End-to-End Tests - 5%]
     end
     
     subgraph "Test Tools"
         Node[Node.js Test Runner]
-        Mock[Mock Services]
-        VSCTest[VS Code Test Framework]
+        Mock[MockFileService]
+        TestUtils[Test Utilities]
+    end
+    
+    subgraph "Test Files"
+        RS[resourceService.test.ts]
+        HS[hats.test.ts]
+        SEC[security.test.ts]
+        DIS[display.test.ts]
+        NAM[naming.test.ts]
+        MCP[mcpMerge.test.ts]
+        TREE[treeIcons.test.ts]
+        CMD[commandsRegistered.test.ts]
+        REPO[repositoryDiscovery.test.ts]
+        TARGET[targetPath.test.ts]
+        WS[workspaceConfiguration.test.ts]
+        ACT[resourceActivation.test.ts]
     end
     
     UT --> Node
     UT --> Mock
     IT --> Node
     IT --> Mock
-    E2E --> VSCTest
+    E2E --> Node
+    
+    RS --> UT
+    HS --> UT
+    SEC --> UT
+    DIS --> UT
+    NAM --> UT
+    MCP --> UT
+    TREE --> UT
+    CMD --> UT
+    REPO --> IT
+    TARGET --> IT
+    WS --> IT
+    ACT --> IT
 ```
 
 #### 11.1.2 Test Categories
 
 **Unit Tests:**
-- Service logic validation
-- Utility function testing
-- Model validation
+- Service logic validation (ResourceService, HatService)
+- Utility function testing (display, security, naming)
+- Model validation and state management
 - Error handling verification
+- Security validation (MCP, task configs)
+- Tree provider functionality
 
 **Integration Tests:**
-- Service interaction testing
-- File system integration
-- Configuration handling
-- Command execution
+- Repository discovery and configuration
+- Target path resolution
+- Workspace configuration handling
+- Resource activation workflows
+- Multi-catalog support
 
 **End-to-End Tests:**
 - Complete user workflows
-- VS Code integration
-- UI behavior validation
+- Command registration and execution
+- File system operations
+- Configuration persistence
 
 ### 11.2 Test Implementation
 
@@ -1065,10 +1225,10 @@ export class MockFileService implements IFileService {
 ```json
 {
   "scripts": {
-    "test": "node dist/test/resourceService.test.js && node dist/test/naming.test.js",
-    "test:all": "npm run test && npm run test:integration",
-    "test:watch": "npm run build && npm run test",
-    "test:coverage": "nyc npm run test"
+    "test": "node dist/test/resourceService.test.js && node dist/test/treeIcons.test.js && node dist/test/naming.test.js && node dist/test/mcpMerge.test.js && node dist/test/hats.test.js && node dist/test/commandsRegistered.test.js && node dist/test/display.test.js && node dist/test/catalogDisplayName.test.js && node dist/test/repositoryDiscovery.test.js && node dist/test/targetPath.test.js && node dist/test/workspaceConfiguration.test.js && node dist/test/resourceActivation.test.js",
+    "test:all": "npm run test",
+    "test:edge-cases": "node dist/test/repositoryDiscovery.test.js && node dist/test/targetPath.test.js && node dist/test/workspaceConfiguration.test.js && node dist/test/resourceActivation.test.js",
+    "test:watch": "npm run build && npm run test"
   }
 }
 ```
@@ -1104,25 +1264,28 @@ jobs:
 graph LR
     SRC[Source Code] --> TSC[TypeScript Compiler]
     TSC --> DIST[Dist Directory]
-    DIST --> PKG[Package.json]
+    DIST --> ESB[ESBuild Bundler]
+    ESB --> BUNDLE[Bundle Output]
+    BUNDLE --> PKG[Package.json]
     PKG --> VSIX[VSIX Builder]
     VSIX --> ARTIFACT[Extension Package]
     
     subgraph "Build Tools"
         TSC
+        ESB
         VSIX
     end
     
     subgraph "Quality Gates"
-        LINT[ESLint]
         TEST[Tests]
         SEC[Security Scan]
+        LIC[License Check]
     end
     
-    SRC --> LINT
     DIST --> TEST
     TEST --> SEC
-    SEC --> VSIX
+    SEC --> LIC
+    LIC --> ESB
 ```
 
 #### 12.1.2 Build Scripts
@@ -1139,14 +1302,28 @@ echo "Building ContextShare VSIX..."
 rm -f *.vsix
 rm -rf dist/
 
-# Build TypeScript
+# Build TypeScript and bundle with esbuild
 npm run build
 
 # Create VSIX package
-npx vsce package --no-dependencies
+npx @vscode/vsce package
 
 echo "VSIX package created successfully"
 ls -la *.vsix
+```
+
+**Build Scripts (package.json):**
+```json
+{
+  "scripts": {
+    "build": "tsc -p . && npm run bundle",
+    "bundle": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --platform=node --format=cjs --external:vscode --sourcemap",
+    "test": "node dist/test/resourceService.test.js && node dist/test/treeIcons.test.js && node dist/test/naming.test.js && node dist/test/mcpMerge.test.js && node dist/test/hats.test.js && node dist/test/commandsRegistered.test.js && node dist/test/display.test.js && node dist/test/catalogDisplayName.test.js && node dist/test/repositoryDiscovery.test.js && node dist/test/targetPath.test.js && node dist/test/workspaceConfiguration.test.js && node dist/test/resourceActivation.test.js",
+    "security:check": "npm run security:audit && npm run security:scan",
+    "license:check": "node scripts/check-licenses.js",
+    "compliance:check": "npm run security:check && npm run license:check"
+  }
+}
 ```
 
 ### 12.2 Installation Methods
@@ -1431,18 +1608,25 @@ workspace/
 
 ```json
 {
-  "copilotCatalog.catalogDirectory": "copilot_catalog",
+  "copilotCatalog.catalogDirectory": {
+    "/path/to/workspace/copilot_catalog": "My Catalog"
+  },
   "copilotCatalog.runtimeDirectory": ".github",
   "copilotCatalog.autoRefresh": true
 }
 ```
 
-#### 15.3.2 Remote Source Configuration
+#### 15.3.2 Multi-Catalog Configuration
 
 ```json
 {
-  "copilotCatalog.source.rootCatalogPath": "https://example.com/catalog/",
-  "copilotCatalog.remoteCacheTtlSeconds": 600
+  "copilotCatalog.catalogDirectory": {
+    "/path/to/local/catalog": "Local Catalog",
+    "https://example.com/catalog/": "Remote Catalog",
+    "/shared/team/catalog": "Team Catalog"
+  },
+  "copilotCatalog.remoteCacheTtlSeconds": 600,
+  "copilotCatalog.catalogFilter": "Remote Catalog"
 }
 ```
 
@@ -1450,11 +1634,16 @@ workspace/
 
 ```json
 {
+  "copilotCatalog.catalogDirectory": {
+    "/absolute/path/to/target": "Target Catalog",
+    "https://cdn.example.com/catalog/": "CDN Catalog",
+    "/shared/team/resources": "Shared Resources"
+  },
   "copilotCatalog.targetWorkspace": "/absolute/path/to/target",
-  "copilotCatalog.source.chatmodes": "https://cdn.example.com/chatmodes/",
-  "copilotCatalog.source.instructions": "/shared/instructions",
   "copilotCatalog.taskMergeStrategy": "merge",
-  "copilotCatalog.backupBeforeOverwrite": true
+  "copilotCatalog.backupBeforeOverwrite": true,
+  "copilotCatalog.enableFileLogging": true,
+  "copilotCatalog.showModificationWarnings": true
 }
 ```
 
@@ -1467,9 +1656,24 @@ workspace/
 'copilotCatalog.refresh': () => Promise<void>
 'copilotCatalog.activate': (item: TreeItem) => Promise<void>
 'copilotCatalog.deactivate': (item: TreeItem) => Promise<void>
+'copilotCatalog.activateAll': () => Promise<void>
+'copilotCatalog.deactivateAll': () => Promise<void>
 'copilotCatalog.showDiff': (item: TreeItem) => Promise<void>
-'copilotCatalog.hats.apply': () => Promise<void>
 'copilotCatalog.openResource': (item: TreeItem) => Promise<void>
+'copilotCatalog.editActivatedCopy': (item: TreeItem) => Promise<void>
+'copilotCatalog.selectRepository': () => Promise<void>
+'copilotCatalog.diagnostics': () => Promise<void>
+'copilotCatalog.filterCatalog': () => Promise<void>
+'copilotCatalog.addCatalogDirectory': () => Promise<void>
+'copilotCatalog.openSettings': () => Promise<void>
+'copilotCatalog.hats.apply': () => Promise<void>
+'copilotCatalog.hats.createWorkspace': () => Promise<void>
+'copilotCatalog.hats.createUser': () => Promise<void>
+'copilotCatalog.hats.delete': () => Promise<void>
+'copilotCatalog.user.enable': (item: TreeItem) => Promise<void>
+'copilotCatalog.user.disable': (item: TreeItem) => Promise<void>
+'copilotCatalog.dev.createTemplateCatalog': () => Promise<void>
+'copilotCatalog.dev.configureSettings': () => Promise<void>
 ```
 
 #### 15.4.2 Service Interfaces
@@ -1480,7 +1684,16 @@ interface IResourceService {
   getResourceState(resource: Resource): Promise<ResourceState>
   activateResource(resource: Resource, options?: ActivateOptions): Promise<OperationResult>
   deactivateResource(resource: Resource): Promise<OperationResult>
+  enableUserResource(resource: Resource): Promise<OperationResult>
+  disableUserResource(resource: Resource): Promise<OperationResult>
   getTargetPath(resource: Resource): string
+  setSourceOverrides(overrides: Partial<Record<ResourceCategory,string>>): void
+  setRemoteCacheTtl(seconds: number): void
+  setRootCatalogOverride(root?: string): void
+  setTargetWorkspaceOverride(path?: string): void
+  setCurrentWorkspaceRoot(path?: string): void
+  setRuntimeDirectoryName(name: string): void
+  clearRemoteCache(): void
 }
 
 interface IFileService {
@@ -1536,6 +1749,7 @@ Enable `copilotCatalog.enableFileLogging` for persistent debug logs.
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2025-08-19 | System Architecture Team | Initial comprehensive specification |
+| 1.1 | 2025-01-27 | AI Assistant | Updated to match current implementation: multi-catalog support, specialized tree providers, advanced resource merging, user resource management, comprehensive security, esbuild bundling |
 
 ---
 

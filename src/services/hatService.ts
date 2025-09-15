@@ -3,6 +3,7 @@
 import * as path from 'path';
 import { Hat, HatSource, IFileService, Repository, Resource } from '../models';
 import { ResourceService } from './resourceService';
+import { logger } from '../utils/logger';
 
 export class HatService {
   constructor(private fileService: IFileService, private resourceService: ResourceService, private userStorageRoot: string){ }
@@ -163,7 +164,9 @@ export class HatService {
         const resources = obj.resources.filter((x:any)=> typeof x==='string');
         return { name: obj.name, description, resources };
       }
-    }catch{ /* ignore */ }
+    }catch(error) { 
+      await logger.warn(`[HatService] Failed to parse hat file: ${error}`);
+    }
     return undefined;
   }
 
