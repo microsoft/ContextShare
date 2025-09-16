@@ -8,7 +8,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { Repository, Resource, ResourceCategory, ResourceState } from './models';
 import { FileService } from './services/fileService';
-import { HatService } from './services/hatService';
+import { PresetService } from './services/presetService';
 import { ResourceService } from './services/resourceService';
 import { CategoryTreeProvider } from './tree/categoryTreeProvider';
 import { OptionsTreeProvider } from './tree/optionsTreeProvider';
@@ -139,7 +139,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		const tasksTree = new CategoryTreeProvider(ResourceCategory.TASKS);
 	const mcpTree = new CategoryTreeProvider(ResourceCategory.MCP);
 	const optionsTree = new OptionsTreeProvider();
-		const hatService = new HatService(fileService, resourceService, context.globalStorageUri.fsPath);
+		const presetService = new PresetService(fileService, resourceService, context.globalStorageUri.fsPath);
 
 		// Track whether we've warned user about read-only catalog views
 		let shownReadonlyNotice = false;
@@ -879,63 +879,63 @@ export async function activate(context: vscode.ExtensionContext) {
 				await refresh();
 			})
 			,
-			// --- Hats (Presets) ---
+			// --- Presets (formerly Hats) ---
 			vscode.commands.registerCommand('copilotCatalog.hats.apply', async () => {
 				if(!currentRepo){ vscode.window.showWarningMessage('No repository available.'); return; }
-				const hats = await hatService.discoverHats(currentRepo);
-				if(hats.length===0){ vscode.window.showInformationMessage('No hats found (check catalog hats/, workspace .vscode/copilot-hats.json, or user hats).'); return; }
-				const pick = await vscode.window.showQuickPick(hats.map(h=> ({ label: h.name, description: h.description || h.source, detail: `${h.resources.length} items`, hat: h })), { placeHolder: 'Select a Hat to apply' });
+				const presets = await presetService.discoverPresets(currentRepo);
+				if(presets.length===0){ vscode.window.showInformationMessage('No presets found (check catalog presets/, workspace .vscode/copilot-presets.json, or user presets).'); return; }
+				const pick = await vscode.window.showQuickPick(presets.map(h=> ({ label: h.name, description: h.description || h.source, detail: `${h.resources.length} items`, preset: h })), { placeHolder: 'Select a Preset to apply' });
 				if(!pick) return;
-				// Ask whether to enforce exclusivity (deactivate non-hat resources)
+				// Ask whether to enforce exclusivity (deactivate non-preset resources)
 				const mode = await vscode.window.showQuickPick([
 					{ label: 'Apply (keep others active)', value: 'nonExclusive' },
 					{ label: 'Apply Exclusively (deactivate others)', value: 'exclusive' }
-				], { placeHolder: 'How should the Hat be applied?' });
+				], { placeHolder: 'How should the Preset be applied?' });
 				if(!mode) return;
 				const exclusive = mode.value === 'exclusive';
 				const currentResources = catalogFilter ? 
 					allResources.filter(r => r.catalogName === catalogFilter) : 
 					allResources;
-				const res = await hatService.applyHat(currentRepo, currentResources, pick.hat, { exclusive });
-				await logger.info(`Applied hat ${pick.hat.name}: activated=${res.activated} deactivated=${res.deactivated} missing=${res.missing.length} errors=${res.errors.length}`);
-				if(res.errors.length){ vscode.window.showWarningMessage(`Hat applied with errors. Activated ${res.activated}, Deactivated ${res.deactivated}. Missing: ${res.missing.length}.`); } else { vscode.window.showInformationMessage(`Hat applied. Activated ${res.activated}, Deactivated ${res.deactivated}. Missing: ${res.missing.length}.`); }
+				const res = await presetService.applyPreset(currentRepo, currentResources, pick.preset, { exclusive });
+				await logger.info(`Applied preset ${pick.preset.name}: activated=${res.activated} deactivated=${res.deactivated} missing=${res.missing.length} errors=${res.errors.length}`);
+				if(res.errors.length){ vscode.window.showWarningMessage(`Preset applied with errors. Activated ${res.activated}, Deactivated ${res.deactivated}. Missing: ${res.missing.length}.`); } else { vscode.window.showInformationMessage(`Preset applied. Activated ${res.activated}, Deactivated ${res.deactivated}. Missing: ${res.missing.length}.`); }
 				await loadResources(); updateStatus();
 			}),
 			vscode.commands.registerCommand('copilotCatalog.hats.createWorkspace', async () => {
 				if(!currentRepo){ vscode.window.showWarningMessage('No repository available.'); return; }
-				const name = await vscode.window.showInputBox({ prompt: 'Name for the workspace Hat', placeHolder: 'My Hat' });
+				const name = await vscode.window.showInputBox({ prompt: 'Name for the workspace Preset', placeHolder: 'My Preset' });
 				if(!name) return;
 				const desc = await vscode.window.showInputBox({ prompt: 'Optional description' });
 				const currentResources = catalogFilter ? 
 					allResources.filter(r => r.catalogName === catalogFilter) : 
 					allResources;
-				const hat = await hatService.createHatFromActive(name, desc, currentResources, 'workspace', currentRepo);
-				await logger.info(`Created workspace hat ${hat.name} with ${hat.resources.length} resources`);
-				vscode.window.showInformationMessage(`Saved Hat "${hat.name}" to workspace (.vscode/copilot-hats.json).`);
+				const preset = await presetService.createPresetFromActive(name, desc, currentResources, 'workspace', currentRepo);
+				await logger.info(`Created workspace preset ${preset.name} with ${preset.resources.length} resources`);
+				vscode.window.showInformationMessage(`Saved Preset "${preset.name}" to workspace (.vscode/copilot-presets.json).`);
 			}),
 			vscode.commands.registerCommand('copilotCatalog.hats.createUser', async () => {
-				const name = await vscode.window.showInputBox({ prompt: 'Name for the user Hat', placeHolder: 'My Hat' });
+				const name = await vscode.window.showInputBox({ prompt: 'Name for the user Preset', placeHolder: 'My Preset' });
 				if(!name) return;
 				const desc = await vscode.window.showInputBox({ prompt: 'Optional description' });
 				const currentResources = catalogFilter ? 
 					allResources.filter(r => r.catalogName === catalogFilter) : 
 					allResources;
-				const hat = await hatService.createHatFromActive(name, desc, currentResources, 'user');
-				await logger.info(`Created user hat ${hat.name} with ${hat.resources.length} resources`);
-				vscode.window.showInformationMessage(`Saved Hat "${hat.name}" to user settings (global storage).`);
+				const preset = await presetService.createPresetFromActive(name, desc, currentResources, 'user');
+				await logger.info(`Created user preset ${preset.name} with ${preset.resources.length} resources`);
+				vscode.window.showInformationMessage(`Saved Preset "${preset.name}" to user settings (global storage).`);
 			}),
 			vscode.commands.registerCommand('copilotCatalog.hats.delete', async () => {
 				if(!currentRepo){ vscode.window.showWarningMessage('No repository available.'); return; }
-				const hats = await hatService.discoverHats(currentRepo);
-				const deletable = hats.filter(h=> h.source === 'workspace' || h.source === 'user');
-				if(deletable.length === 0){ vscode.window.showInformationMessage('No workspace/user hats to delete.'); return; }
-				const pick = await vscode.window.showQuickPick(deletable.map(h=> ({ label: h.name, description: h.description || h.source, detail: `${h.source} hat`, hat: h })), { placeHolder: 'Select a Hat to delete' });
+				const presets = await presetService.discoverPresets(currentRepo);
+				const deletable = presets.filter(h=> h.source === 'workspace' || h.source === 'user');
+				if(deletable.length === 0){ vscode.window.showInformationMessage('No workspace/user presets to delete.'); return; }
+				const pick = await vscode.window.showQuickPick(deletable.map(h=> ({ label: h.name, description: h.description || h.source, detail: `${h.source} preset`, preset: h })), { placeHolder: 'Select a Preset to delete' });
 				if(!pick) return;
-				const confirm = await vscode.window.showWarningMessage(`Delete Hat "${pick.hat.name}" from ${pick.hat.source}?`, { modal: true }, 'Delete');
+				const confirm = await vscode.window.showWarningMessage(`Delete Preset "${pick.preset.name}" from ${pick.preset.source}?`, { modal: true }, 'Delete');
 				if(confirm !== 'Delete') return;
-				const ok = await hatService.deleteHat(pick.hat, currentRepo);
-				if(ok) vscode.window.showInformationMessage(`Deleted Hat "${pick.hat.name}" (${pick.hat.source}).`);
-				else vscode.window.showWarningMessage('Hat not found or could not be deleted.');
+				const ok = await presetService.deletePreset(pick.preset, currentRepo);
+				if(ok) vscode.window.showInformationMessage(`Deleted Preset "${pick.preset.name}" (${pick.preset.source}).`);
+				else vscode.window.showWarningMessage('Preset not found or could not be deleted.');
 			})
 			,
 			// User resource enable/disable

@@ -22,8 +22,8 @@
   "contributes": {
     "submenus": [
       {
-        "id": "copilotCatalog.hatsMenu",
-        "label": "Hats",
+        "id": "copilotCatalog.presetsMenu",
+        "label": "Presets",
         "icon": "$(kebab-vertical)"
       },
       {
@@ -228,7 +228,7 @@
       },
       {
         "command": "copilotCatalog.hats.apply",
-        "title": "ContextShare: Apply Hat (Preset)",
+        "title": "ContextShare: Apply Preset",
         "icon": {
           "light": "resources/icons/hat-light.svg",
           "dark": "resources/icons/hat-dark.svg"
@@ -236,17 +236,17 @@
       },
       {
         "command": "copilotCatalog.hats.createWorkspace",
-        "title": "ContextShare: Save Hat from Active (Workspace)",
+        "title": "ContextShare: Save Preset from Active (Workspace)",
         "icon": "$(save)"
       },
       {
         "command": "copilotCatalog.hats.createUser",
-        "title": "ContextShare: Save Hat from Active (User)",
+        "title": "ContextShare: Save Preset from Active (User)",
         "icon": "$(account)"
       },
       {
         "command": "copilotCatalog.hats.delete",
-        "title": "ContextShare: Delete Hat (Workspace/User)",
+        "title": "ContextShare: Delete Preset (Workspace/User)",
         "icon": "$(trash)"
       },
       {
@@ -343,7 +343,7 @@
           "group": "navigation"
         },
         {
-          "submenu": "copilotCatalog.hatsMenu",
+          "submenu": "copilotCatalog.presetsMenu",
           "when": "view == copilotCatalogOverview || view == copilotCatalogChatmodes",
           "group": "navigation@b"
         },
@@ -353,7 +353,7 @@
           "group": "navigation@c"
         }
       ],
-      "copilotCatalog.hatsMenu": [
+      "copilotCatalog.presetsMenu": [
         {
           "command": "copilotCatalog.hats.apply",
           "when": "view == copilotCatalogOverview || view == copilotCatalogChatmodes",
