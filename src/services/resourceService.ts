@@ -4,7 +4,7 @@ import * as fs from 'fs/promises';
 import { IncomingMessage } from 'http';
 import * as https from 'https';
 import * as path from 'path';
-import { ActivateOptions, IFileService, IResourceService, OperationResult, Repository, Resource, ResourceCategory, ResourceState } from '../models';
+import { ActivateOptions, IFileService, IResourceService, OperationResult, Repository, Resource, ResourceCategory, ResourceState, ResourceGroup } from '../models';
 import { isSafeRelativeEntry, sanitizeFilename, isValidHttpsUrl, sanitizeErrorMessage, validateMcpConfig, validateTaskConfig } from '../utils/security';
 import { getErrorMessage } from '../utils/errors';
 import { logger } from '../utils/logger';
@@ -123,7 +123,9 @@ export class ResourceService implements IResourceService {
             counter++;
           }
         }
-        resources.push({ id: candidateId, relativePath: rel, absolutePath: filePath, category, targetSubdir: CATEGORY_DIRS[category], repository, state: ResourceState.INACTIVE, origin: 'catalog'});
+        // Extract group path from the relative path within the category
+        const groupPath = this.extractGroupPath(rel, category);
+        resources.push({ id: candidateId, relativePath: rel, absolutePath: filePath, category, targetSubdir: CATEGORY_DIRS[category], repository, state: ResourceState.INACTIVE, origin: 'catalog', groupPath});
       }
     } else {
     // Legacy per-category sources
@@ -151,7 +153,7 @@ export class ResourceService implements IResourceService {
                 const content = await this.fetchRemoteCached(fileUrl);
                 const abs = await this.cacheRemoteToDisk(repository, category, safeName, content);
                 const rel = path.join(CATEGORY_DIRS[category], safeName);
-                resources.push({ id: `${repository.name}:remote:${rel}`, relativePath: rel, absolutePath: abs, category, targetSubdir: CATEGORY_DIRS[category], repository, state: ResourceState.INACTIVE, origin: 'remote'});
+                resources.push({ id: `${repository.name}:remote:${rel}`, relativePath: rel, absolutePath: abs, category, targetSubdir: CATEGORY_DIRS[category], repository, state: ResourceState.INACTIVE, origin: 'remote', groupPath: this.extractGroupPath(rel, category)});
               } catch (error) { 
                 this.log(`[ResourceService] Failed to fetch individual file ${fileUrl}: ${getErrorMessage(error)}`);
               }
@@ -162,7 +164,7 @@ export class ResourceService implements IResourceService {
             const safeName = sanitizeFilename(fileName);
             const abs = await this.cacheRemoteToDisk(repository, category, safeName, content);
             const rel = path.join(CATEGORY_DIRS[category], safeName);
-            resources.push({ id: `${repository.name}:remote:${rel}`, relativePath: rel, absolutePath: abs, category, targetSubdir: CATEGORY_DIRS[category], repository, state: ResourceState.INACTIVE, origin: 'remote'});
+            resources.push({ id: `${repository.name}:remote:${rel}`, relativePath: rel, absolutePath: abs, category, targetSubdir: CATEGORY_DIRS[category], repository, state: ResourceState.INACTIVE, origin: 'remote', groupPath: this.extractGroupPath(rel, category)});
           }
           } catch (e:any) { 
             this.log(`[ResourceService] remote source failed for ${category}: ${sanitizeErrorMessage(e)}`); 
@@ -218,7 +220,7 @@ export class ResourceService implements IResourceService {
             while(resources.find(r=> r.id === `${repository.name}:${relCandidate}`)){
               counter++; relCandidate = path.join(CATEGORY_DIRS[category], `${counter}_${path.basename(filePath)}`);
             }
-            resources.push({ id: `${repository.name}:${relCandidate}`, relativePath: relCandidate, absolutePath: filePath, category, targetSubdir: CATEGORY_DIRS[category], repository, state: ResourceState.INACTIVE, origin: 'catalog'});
+            resources.push({ id: `${repository.name}:${relCandidate}`, relativePath: relCandidate, absolutePath: filePath, category, targetSubdir: CATEGORY_DIRS[category], repository, state: ResourceState.INACTIVE, origin: 'catalog', groupPath: this.extractGroupPath(relCandidate, category)});
         }
   } catch (e:any) { 
     this.log(`[ResourceService] fallback recursive scan failed: ${sanitizeErrorMessage(e)}`); 
@@ -245,7 +247,7 @@ export class ResourceService implements IResourceService {
         if(!exists){
           const disabled = entry.toLowerCase().endsWith('.disabled');
           const rel = path.join(CATEGORY_DIRS[category], entry); // relative to catalog path semantics
-          runtimeUser.push({ id: `${repository.name}:user:${rel}`, relativePath: rel, absolutePath: runtimeFull, category, targetSubdir: CATEGORY_DIRS[category], repository, state: disabled ? ResourceState.INACTIVE : ResourceState.ACTIVE, origin: 'user', disabled });
+          runtimeUser.push({ id: `${repository.name}:user:${rel}`, relativePath: rel, absolutePath: runtimeFull, category, targetSubdir: CATEGORY_DIRS[category], repository, state: disabled ? ResourceState.INACTIVE : ResourceState.ACTIVE, origin: 'user', disabled, groupPath: this.extractGroupPath(rel, category) });
         }
       }
     }
@@ -257,6 +259,143 @@ export class ResourceService implements IResourceService {
   for(const r of resources){ byCat[r.category] = (byCat[r.category]||0)+1; }
   this.log(`[ResourceService] discoverResources done ${dt}ms total=${resources.length} byCat=${JSON.stringify(byCat)}`);
   return resources;
+  }
+
+  private extractGroupPath(relativePath: string, category: ResourceCategory): string | undefined {
+    // Extract the group path from the relative path
+    // e.g., "chatmodes/ai-agents/code-assistant.chatmode.md" -> "ai-agents"
+    // e.g., "prompts/workflows/advanced/setup.prompt.md" -> "workflows/advanced"
+    const categoryPrefix = `${category}/`;
+    if (!relativePath.startsWith(categoryPrefix)) {
+      return undefined;
+    }
+    
+    const pathWithinCategory = relativePath.substring(categoryPrefix.length);
+    const pathParts = pathWithinCategory.split('/');
+    
+    // If file is directly in category folder, no group
+    if (pathParts.length <= 1) {
+      return undefined;
+    }
+    
+    // Return all path parts except the filename as the group path
+    return pathParts.slice(0, -1).join('/');
+  }
+
+  buildResourceGroups(resources: Resource[], category: ResourceCategory): ResourceGroup[] {
+    // Build a hierarchical structure of groups for the given category
+    const categoryResources = resources.filter(r => r.category === category);
+    const groupMap = new Map<string, ResourceGroup>();
+    const rootGroups: ResourceGroup[] = [];
+    
+    // First pass: create groups for all unique group paths
+    const allGroupPaths = new Set<string>();
+    for (const resource of categoryResources) {
+      if (resource.groupPath) {
+        // Add this group path and all its parent paths
+        const pathParts = resource.groupPath.split('/');
+        for (let i = 1; i <= pathParts.length; i++) {
+          allGroupPaths.add(pathParts.slice(0, i).join('/'));
+        }
+      }
+    }
+    
+    // Create group objects
+    for (const groupPath of allGroupPaths) {
+      const groupId = `${category}-group-${groupPath}`;
+      const pathParts = groupPath.split('/');
+      const name = pathParts[pathParts.length - 1];
+      
+      const group: ResourceGroup = {
+        id: groupId,
+        name,
+        path: groupPath,
+        category,
+        resources: [],
+        enabled: false,
+        children: []
+      };
+      
+      groupMap.set(groupPath, group);
+    }
+    
+    // Second pass: assign resources to their direct groups and organize hierarchy
+    for (const resource of categoryResources) {
+      if (resource.groupPath) {
+        const group = groupMap.get(resource.groupPath);
+        if (group) {
+          group.resources.push(resource);
+        }
+      }
+    }
+    
+    // Third pass: organize groups into hierarchical structure
+    for (const [groupPath, group] of groupMap) {
+      const pathParts = groupPath.split('/');
+      if (pathParts.length === 1) {
+        // This is a root-level group
+        rootGroups.push(group);
+      } else {
+        // This is a nested group, add it to its parent
+        const parentPath = pathParts.slice(0, -1).join('/');
+        const parentGroup = groupMap.get(parentPath);
+        if (parentGroup) {
+          parentGroup.children!.push(group);
+        }
+      }
+    }
+    
+    // Fourth pass: calculate enabled states
+    this.calculateGroupStates(rootGroups);
+    
+    return rootGroups;
+  }
+  
+  private calculateGroupStates(groups: ResourceGroup[]): void {
+    for (const group of groups) {
+      // Recursively calculate for children first
+      if (group.children && group.children.length > 0) {
+        this.calculateGroupStates(group.children);
+      }
+      
+      // Count active resources in this group (direct resources only)
+      const activeCount = group.resources.filter((r: Resource) => r.state === ResourceState.ACTIVE).length;
+      const totalCount = group.resources.length;
+      
+      if (totalCount === 0) {
+        // No direct resources, enabled state depends on children
+        if (group.children && group.children.length > 0) {
+          const enabledChildren = group.children.filter((c: ResourceGroup) => c.enabled).length;
+          const partialChildren = group.children.filter((c: ResourceGroup) => c.partiallyEnabled).length;
+          
+          if (enabledChildren === group.children.length) {
+            group.enabled = true;
+            group.partiallyEnabled = false;
+          } else if (enabledChildren > 0 || partialChildren > 0) {
+            group.enabled = false;
+            group.partiallyEnabled = true;
+          } else {
+            group.enabled = false;
+            group.partiallyEnabled = false;
+          }
+        } else {
+          group.enabled = false;
+          group.partiallyEnabled = false;
+        }
+      } else {
+        // Has direct resources
+        if (activeCount === totalCount) {
+          group.enabled = true;
+          group.partiallyEnabled = false;
+        } else if (activeCount > 0) {
+          group.enabled = false;
+          group.partiallyEnabled = true;
+        } else {
+          group.enabled = false;
+          group.partiallyEnabled = false;
+        }
+      }
+    }
   }
 
   private resolveSourceDir(repository: Repository, overridePath: string){
@@ -986,4 +1125,54 @@ export class ResourceService implements IResourceService {
     try { const raw = await this.fileService.readFile(metaPath); const obj = JSON.parse(raw||'{}'); return obj && typeof obj==='object' ? obj : {}; } catch { return {}; }
   }
   private async readMcpMetaSafe(metaPath: string): Promise<any> { return this.readMcpMeta(metaPath); }
+
+  async activateResourceGroup(group: ResourceGroup): Promise<OperationResult[]> {
+    const results: OperationResult[] = [];
+    
+    // Recursively activate all resources in the group and its children
+    const activateGroupRecursive = async (g: ResourceGroup): Promise<void> => {
+      // Activate direct resources
+      for (const resource of g.resources) {
+        if (resource.state !== ResourceState.ACTIVE) {
+          const result = await this.activateResource(resource);
+          results.push(result);
+        }
+      }
+      
+      // Activate child groups
+      if (g.children && g.children.length > 0) {
+        for (const childGroup of g.children) {
+          await activateGroupRecursive(childGroup);
+        }
+      }
+    };
+    
+    await activateGroupRecursive(group);
+    return results;
+  }
+
+  async deactivateResourceGroup(group: ResourceGroup): Promise<OperationResult[]> {
+    const results: OperationResult[] = [];
+    
+    // Recursively deactivate all resources in the group and its children
+    const deactivateGroupRecursive = async (g: ResourceGroup): Promise<void> => {
+      // Deactivate direct resources
+      for (const resource of g.resources) {
+        if (resource.state === ResourceState.ACTIVE || resource.state === ResourceState.MODIFIED) {
+          const result = await this.deactivateResource(resource);
+          results.push(result);
+        }
+      }
+      
+      // Deactivate child groups
+      if (g.children && g.children.length > 0) {
+        for (const childGroup of g.children) {
+          await deactivateGroupRecursive(childGroup);
+        }
+      }
+    };
+    
+    await deactivateGroupRecursive(group);
+    return results;
+  }
 }

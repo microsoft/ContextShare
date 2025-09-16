@@ -350,10 +350,15 @@ export async function activate(context: vscode.ExtensionContext) {
 			
 			// Update all tree providers with filtered resources
 			overviewTree.setRepository(currentRepo, filteredResources);
+			chatmodesTree.setResourceService(resourceService);
 			chatmodesTree.setRepository(currentRepo, filteredResources);
+			instructionsTree.setResourceService(resourceService);
 			instructionsTree.setRepository(currentRepo, filteredResources);
+			promptsTree.setResourceService(resourceService);
 			promptsTree.setRepository(currentRepo, filteredResources);
+			tasksTree.setResourceService(resourceService);
 			tasksTree.setRepository(currentRepo, filteredResources);
+			mcpTree.setResourceService(resourceService);
 			mcpTree.setRepository(currentRepo, filteredResources);
 			// optionsTree has no resource dependency
 			
@@ -598,6 +603,98 @@ export async function activate(context: vscode.ExtensionContext) {
 					allResources.filter(r => r.catalogName === catalogFilter) : 
 					allResources;
 				for (const r of currentResources) { if((r as any).origin !== 'user') await resourceService.deactivateResource(r); }
+				refreshAllTrees();
+				updateStatus();
+			}),
+			vscode.commands.registerCommand('copilotCatalog.activateGroup', async (item: any) => {
+				const groupId = (item as any)?.id;
+				if (!groupId || !currentRepo) return;
+				
+				// Find the group in the resource service - use buildResourceGroups to get current groups
+				let targetGroup: any = null;
+				const allCurrentResources = catalogFilter ? 
+					allResources.filter(r => r.catalogName === catalogFilter) : 
+					allResources;
+					
+				// Try each category to find the group
+				for (const category of Object.values(ResourceCategory)) {
+					const groups = resourceService.buildResourceGroups(allCurrentResources, category);
+					const findGroup = (groups: any[]): any => {
+						for (const group of groups) {
+							if (group.id === groupId) return group;
+							if (group.children && group.children.length > 0) {
+								const found = findGroup(group.children);
+								if (found) return found;
+							}
+						}
+						return null;
+					};
+					targetGroup = findGroup(groups);
+					if (targetGroup) break;
+				}
+				
+				if (!targetGroup) {
+					vscode.window.showErrorMessage('Group not found');
+					return;
+				}
+				
+				await logger.info(`Command.activateGroup start groupId=${groupId} name=${targetGroup.name}`);
+				const results = await resourceService.activateResourceGroup(targetGroup);
+				const successCount = results.filter(r => r.success).length;
+				const totalCount = results.length;
+				
+				if (successCount === totalCount) {
+					vscode.window.showInformationMessage(`Activated group "${targetGroup.name}" (${successCount} resources)`);
+				} else {
+					vscode.window.showWarningMessage(`Partially activated group "${targetGroup.name}" (${successCount}/${totalCount} successful)`);
+				}
+				
+				refreshAllTrees();
+				updateStatus();
+			}),
+			vscode.commands.registerCommand('copilotCatalog.deactivateGroup', async (item: any) => {
+				const groupId = (item as any)?.id;
+				if (!groupId || !currentRepo) return;
+				
+				// Find the group in the resource service - use buildResourceGroups to get current groups
+				let targetGroup: any = null;
+				const allCurrentResources = catalogFilter ? 
+					allResources.filter(r => r.catalogName === catalogFilter) : 
+					allResources;
+					
+				// Try each category to find the group
+				for (const category of Object.values(ResourceCategory)) {
+					const groups = resourceService.buildResourceGroups(allCurrentResources, category);
+					const findGroup = (groups: any[]): any => {
+						for (const group of groups) {
+							if (group.id === groupId) return group;
+							if (group.children && group.children.length > 0) {
+								const found = findGroup(group.children);
+								if (found) return found;
+							}
+						}
+						return null;
+					};
+					targetGroup = findGroup(groups);
+					if (targetGroup) break;
+				}
+				
+				if (!targetGroup) {
+					vscode.window.showErrorMessage('Group not found');
+					return;
+				}
+				
+				await logger.info(`Command.deactivateGroup start groupId=${groupId} name=${targetGroup.name}`);
+				const results = await resourceService.deactivateResourceGroup(targetGroup);
+				const successCount = results.filter(r => r.success).length;
+				const totalCount = results.length;
+				
+				if (successCount === totalCount) {
+					vscode.window.showInformationMessage(`Deactivated group "${targetGroup.name}" (${successCount} resources)`);
+				} else {
+					vscode.window.showWarningMessage(`Partially deactivated group "${targetGroup.name}" (${successCount}/${totalCount} successful)`);
+				}
+				
 				refreshAllTrees();
 				updateStatus();
 			}),
