@@ -18,6 +18,7 @@
     <Asset Type="Microsoft.VisualStudio.Code.Manifest" Path="extension/package.json" />
   <Asset Type="Microsoft.VisualStudio.Code.Extension" Path="extension" />
     <Asset Type="Microsoft.VisualStudio.Services.Content.Details" Path="extension/README.md" />
+    <Asset Type="Microsoft.VisualStudio.Services.Content.Changelog" Path="extension/CHANGELOG.md" />
   <Asset Type="Microsoft.VisualStudio.Services.Icons.Default" Path="extension/resources/icon.png" />
   </Assets>
 </PackageManifest>
