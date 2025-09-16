@@ -42,7 +42,7 @@ The extension operates within the VS Code ecosystem as a client-side tool that:
 - Discovers AI resources from multiple local and remote catalogs
 - Manages resource activation/deactivation states with advanced merging capabilities
 - Provides specialized tree-based UI views for different resource categories
-- Supports preset configurations ("Hats") for resource groups
+- Supports preset configurations for resource groups
 - Handles user-created resources with enable/disable functionality
 - Ensures secure handling of remote content with comprehensive validation
 - Integrates with VS Code's native task and MCP systems
@@ -194,7 +194,7 @@ graph TB
 
 #### 4.2.1 Service Layer Pattern
 - **Purpose**: Encapsulate business logic in reusable services
-- **Implementation**: ResourceService, HatService, FileService
+- **Implementation**: ResourceService, PresetService, FileService
 - **Benefits**: Testability, separation of concerns, reusability
 
 #### 4.2.2 Repository Pattern
@@ -237,7 +237,7 @@ graph LR
     
     subgraph "Services"
         RS[ResourceService]
-        HS[HatService]
+        PS[PresetService]
         FS[FileService]
     end
     
@@ -287,7 +287,7 @@ async function loadResources()
 
 **Dependencies:**
 - ResourceService
-- HatService  
+- PresetService  
 - FileService
 - OverviewTreeProvider
 - CategoryTreeProvider (multiple instances)
@@ -329,26 +329,26 @@ clearRemoteCache()
 - Resource state computation with specialized MCP/task handling
 - User resource enable/disable state tracking
 
-#### 5.2.3 Hat Service (`services/hatService.ts`)
+#### 5.2.3 Preset Service (`services/presetService.ts`)
 
 **Responsibilities:**
-- Hat (preset) discovery from multiple sources
-- Hat application (bulk resource activation/deactivation)
-- Hat creation from current active resources
-- Hat persistence to workspace and user storage
+- Preset discovery from multiple sources
+- Preset application (bulk resource activation/deactivation)
+- Preset creation from current active resources
+- Preset persistence to workspace and user storage
 
 **Key Functions:**
 ```typescript
-async discoverHats(repo: Repository): Promise<Hat[]>
-async applyHat(repo: Repository, resources: Resource[], hat: Hat): Promise<ApplyResult>
-async createHatFromActive(name: string, resources: Resource[], source: HatSource): Promise<Hat>
-async deleteHat(hat: Hat, repo?: Repository): Promise<boolean>
+async discoverPresets(repo: Repository): Promise<Preset[]>
+async applyPreset(repo: Repository, resources: Resource[], preset: Preset): Promise<ApplyResult>
+async createPresetFromActive(name: string, resources: Resource[], source: PresetSource): Promise<Preset>
+async deletePreset(preset: Preset, repo?: Repository): Promise<boolean>
 ```
 
 **Storage Locations:**
-- Catalog: `{catalog}/hats/*.json`
-- Workspace: `.vscode/copilot-hats.json`
-- User: Global storage `hats.json`
+- Catalog: `{catalog}/presets/*.json`
+- Workspace: `.vscode/copilot-presets.json`
+- User: Global storage `presets.json`
 
 #### 5.2.4 File Service (`services/fileService.ts`)
 
@@ -645,7 +645,7 @@ private remoteCache: Map<string, {
 - `copilotCatalog.activate` - Activate selected resource
 - `copilotCatalog.deactivate` - Deactivate selected resource
 - `copilotCatalog.showDiff` - Show differences between catalog and runtime
-- `copilotCatalog.hats.apply` - Apply hat preset
+- `copilotCatalog.hats.apply` - Apply preset
 - `copilotCatalog.openResource` - Open resource for viewing/editing
 
 **Configuration Schema:**
@@ -983,7 +983,7 @@ sequenceDiagram
     VSCode->>Ext: activate()
     Ext->>Services: Initialize FileService
     Ext->>Services: Initialize ResourceService
-    Ext->>Services: Initialize HatService
+    Ext->>Services: Initialize PresetService
     Ext->>UI: Initialize CatalogTreeProvider
     Ext->>VSCode: Register commands
     Ext->>VSCode: Register tree data provider
@@ -1103,7 +1103,7 @@ graph TD
     
     subgraph "Test Files"
         RS[resourceService.test.ts]
-        HS[hats.test.ts]
+        PS[presets.test.ts]
         SEC[security.test.ts]
         DIS[display.test.ts]
         NAM[naming.test.ts]
@@ -1139,7 +1139,7 @@ graph TD
 #### 11.1.2 Test Categories
 
 **Unit Tests:**
-- Service logic validation (ResourceService, HatService)
+- Service logic validation (ResourceService, PresetService)
 - Utility function testing (display, security, naming)
 - Model validation and state management
 - Error handling verification
@@ -1225,7 +1225,7 @@ export class MockFileService implements IFileService {
 ```json
 {
   "scripts": {
-    "test": "node dist/test/resourceService.test.js && node dist/test/treeIcons.test.js && node dist/test/naming.test.js && node dist/test/mcpMerge.test.js && node dist/test/hats.test.js && node dist/test/commandsRegistered.test.js && node dist/test/display.test.js && node dist/test/catalogDisplayName.test.js && node dist/test/repositoryDiscovery.test.js && node dist/test/targetPath.test.js && node dist/test/workspaceConfiguration.test.js && node dist/test/resourceActivation.test.js",
+    "test": "node dist/test/resourceService.test.js && node dist/test/treeIcons.test.js && node dist/test/naming.test.js && node dist/test/mcpMerge.test.js && node dist/test/presets.test.js && node dist/test/commandsRegistered.test.js && node dist/test/display.test.js && node dist/test/catalogDisplayName.test.js && node dist/test/repositoryDiscovery.test.js && node dist/test/targetPath.test.js && node dist/test/workspaceConfiguration.test.js && node dist/test/resourceActivation.test.js",
     "test:all": "npm run test",
     "test:edge-cases": "node dist/test/repositoryDiscovery.test.js && node dist/test/targetPath.test.js && node dist/test/workspaceConfiguration.test.js && node dist/test/resourceActivation.test.js",
     "test:watch": "npm run build && npm run test"
@@ -1549,7 +1549,7 @@ export function validateResourcePath(path: string): boolean {
 | Term | Definition |
 |------|------------|
 | **Catalog** | Directory containing AI resource templates |
-| **Hat** | Named preset of resources for bulk activation |
+| **Preset** | Named collection of resources for bulk activation |
 | **Resource** | Individual AI asset (chatmode, instruction, prompt, task, MCP) |
 | **Runtime** | Directory where active resources are copied for use |
 | **Activation** | Process of copying catalog resource to runtime directory |
@@ -1574,7 +1574,7 @@ workspace/
 │   │   └── build.task.json
 │   ├── mcp/
 │   │   └── servers.mcp.json
-│   └── hats/
+│   └── presets/
 │       └── preset.json
 ├── .github/                      # Runtime directory
 │   ├── chatmodes/
@@ -1584,7 +1584,7 @@ workspace/
 │   └── mcp/
 └── .vscode/
     ├── settings.json
-    └── copilot-hats.json        # Workspace hats
+    └── copilot-presets.json        # Workspace presets
 ```
 
 #### 15.2.2 Naming Conventions
@@ -1597,10 +1597,10 @@ workspace/
 - `user.{original}` (first variant)
 - `user.{N}.{original}` (subsequent variants)
 
-**Hat Files:**
-- Catalog: `{catalog}/hats/{name}.json`
-- Workspace: `.vscode/copilot-hats.json`
-- User: `{globalStorage}/hats.json`
+**Preset Files:**
+- Catalog: `{catalog}/presets/{name}.json`
+- Workspace: `.vscode/copilot-presets.json`
+- User: `{globalStorage}/presets.json`
 
 ### 15.3 Configuration Examples
 
@@ -1740,7 +1740,7 @@ Enable `copilotCatalog.enableFileLogging` for persistent debug logs.
 1. Check `.vscode/settings.json` for configuration
 2. Verify catalog directory structure
 3. Examine runtime directory contents
-4. Review hat definitions in `.vscode/copilot-hats.json`
+4. Review preset definitions in `.vscode/copilot-presets.json`
 
 ---
 

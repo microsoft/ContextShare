@@ -10,7 +10,7 @@ This guide will walk you through everything you need to know to set up and use t
 2. [Understanding the Interface](#understanding-the-interface)
 3. [Configuration Options](#configuration-options)
 4. [Setting Up Your First Catalog](#setting-up-your-first-catalog)
-5. [Working with Hats (Presets)](#working-with-hats-presets)
+5. [Working with Presets](#working-with-presets)
 6. [Team Collaboration Workflow](#team-collaboration-workflow)
 7. [Advanced Configuration](#advanced-configuration)
 8. [Troubleshooting](#troubleshooting)
@@ -54,7 +54,7 @@ The main interface showing your catalog structure:
 - **✓ Active**: Resource is copied to runtime directory and ready to use
 - **⚠ Modified**: Active resource has been changed and differs from catalog version
 - **📁 Available**: Resource exists in catalog but isn't activated
-- **🔍 Missing**: Referenced in Hat but not found in catalog
+- **🔍 Missing**: Referenced in Preset but not found in catalog
 
 #### Context Menu (Right-click)
 - **Activate**: Copy resource to runtime directory
@@ -65,11 +65,11 @@ The main interface showing your catalog structure:
 
 ### Title Bar Commands
 
-#### Hats Menu 🎩
-- **Apply Hat (Preset)**: Activate a saved preset
-- **Save Hat from Active (Workspace)**: Save current active resources as a workspace preset
-- **Save Hat from Active (User)**: Save current active resources as a user preset
-- **Delete Hat**: Remove a saved preset
+#### Presets Menu 🎩
+- **Apply Preset**: Activate a saved preset
+- **Save Preset from Active (Workspace)**: Save current active resources as a workspace preset
+- **Save Preset from Active (User)**: Save current active resources as a user preset
+- **Delete Preset**: Remove a saved preset
 
 #### Dev Menu 🔧
 - **Create Template Catalog**: Generate sample catalog structure
@@ -110,7 +110,7 @@ Access settings via: **File** → **Preferences** → **Settings** → Search "C
    ├── prompts/            # Reusable prompt templates
    ├── tasks/              # VS Code task definitions
    ├── mcp/                # Model Context Protocol configs
-   └── hats/               # Preset collections
+   └── presets/               # Preset collections
    ```
 
 ### Method 2: Manual Catalog Creation
@@ -119,7 +119,7 @@ Access settings via: **File** → **Preferences** → **Settings** → Search "C
    ```
    mkdir copilot_catalog
    cd copilot_catalog
-   mkdir chatmodes instructions prompts tasks mcp hats
+   mkdir chatmodes instructions prompts tasks mcp presets
    ```
 
 2. **Add your first resource** (example instruction):
@@ -161,23 +161,23 @@ Example configuration:
 }
 ```
 
-## Working with Hats (Presets)
+## Working with Presets
 
-Hats let you save and apply collections of resources with one click.
+Presets let you save and apply collections of resources with one click.
 
-### Creating Your First Hat
+### Creating Your First Preset
 
 1. **Activate some resources** (right-click → Activate)
-2. **Save as Hat**: Click **Hats** → **Save Hat from Active (Workspace)**
+2. **Save as Preset**: Click **Presets** → **Save Preset from Active (Workspace)**
 3. **Name it**: e.g., "Code Review Setup"
 4. **Add description** (optional): "Resources for thorough code reviews"
 
-### Hat File Structure
+### Preset File Structure
 
-Workspace hats are saved to `.vscode/copilot-hats.json`:
+Workspace presets are saved to `.vscode/copilot-presets.json`:
 ```json
 {
-  "hats": [
+  "presets": [
     {
       "name": "Code Review Setup",
       "description": "Resources for thorough code reviews",
@@ -191,27 +191,27 @@ Workspace hats are saved to `.vscode/copilot-hats.json`:
 }
 ```
 
-### Applying Hats
+### Applying Presets
 
-1. **Click Hats → Apply Hat (Preset)**
-2. **Choose your hat** from the list
+1. **Click Presets → Apply Preset**
+2. **Choose your preset** from the list
 3. **Select mode**:
-   - **Additive**: Add hat resources to currently active ones
-   - **Exclusive**: Deactivate everything else, activate only hat resources
+   - **Additive**: Add preset resources to currently active ones
+   - **Exclusive**: Deactivate everything else, activate only preset resources
 
-### Hat Types
+### Preset Types
 
-#### Workspace Hats (.vscode/copilot-hats.json)
+#### Workspace Presets (.vscode/copilot-presets.json)
 - Shared with your team via Git
 - Perfect for role-based setups ("Frontend Dev", "Backend Dev", "QA")
 - Project-specific configurations
 
-#### User Hats (Global)
+#### User Presets (Global)
 - Personal to your machine
 - Cross-project personal preferences
 - Not shared with team
 
-#### Catalog Hats (copilot_catalog/hats/*.json)
+#### Catalog Presets (copilot_catalog/presets/*.json)
 - Stored in the catalog itself
 - Can be shared across multiple repositories
 - Version-controlled with the catalog
@@ -228,17 +228,17 @@ Workspace hats are saved to `.vscode/copilot-hats.json`:
    git add copilot_catalog/
   git commit -m "Add team catalog"
    
-   # Create team hats in VS Code and commit
-   git add .vscode/copilot-hats.json
+   # Create team presets in VS Code and commit
+   git add .vscode/copilot-presets.json
    git commit -m "Add team presets"
    git push
    ```
 
 2. **Team Members**:
    ```bash
-   git pull  # Get latest catalog and hats
+   git pull  # Get latest catalog and presets
   # Open VS Code, go to ContextShare view
-   # Click Hats → Apply Hat → Choose team preset
+   # Click Presets → Apply Preset → Choose team preset
    ```
 
 ### Best Practices for Teams
@@ -253,16 +253,16 @@ copilot_catalog/
 ├── chatmodes/
 │   ├── roles/             # Role-based chat modes
 │   └── tasks/             # Task-specific modes
-└── hats/
+└── presets/
     ├── frontend-dev.json  # Frontend developer preset
     ├── backend-dev.json   # Backend developer preset
     └── code-review.json   # Code reviewer preset
 ```
 
-#### 2. Hat Strategy
-- **Role-based hats**: "Frontend Dev", "Backend Dev", "DevOps", "QA"
-- **Task-based hats**: "Code Review", "Bug Fixing", "Feature Development"
-- **Project-phase hats**: "Initial Development", "Maintenance", "Refactoring"
+#### 2. Preset Strategy
+- **Role-based presets**: "Frontend Dev", "Backend Dev", "DevOps", "QA"
+- **Task-based presets**: "Code Review", "Bug Fixing", "Feature Development"
+- **Project-phase presets**: "Initial Development", "Maintenance", "Refactoring"
 
 #### 3. Naming Conventions
 - Use consistent prefixes: `TEAM.`, `PROJECT.`, `ROLE.`
@@ -379,15 +379,15 @@ Tip: Do not hand-edit the manifest; scripts keep it correct based on package.jso
 3. **Check file conflicts**: Look for existing files that might block activation
 4. **View diagnostics**: Use Dev → Diagnostics for detailed error info
 
-#### Hat Application Fails
+#### Preset Application Fails
 
-**Problem**: Applying a hat doesn't activate expected resources
+**Problem**: Applying a preset doesn't activate expected resources
 
 **Solutions**:
-1. **Check resource paths**: Ensure hat references valid catalog paths
+1. **Check resource paths**: Ensure preset references valid catalog paths
 2. **Refresh catalog**: Resource might have been moved or renamed
 3. **Check exclusive mode**: In exclusive mode, other resources are deactivated
-4. **Verify catalog source**: Hat might reference resources from different catalog
+4. **Verify catalog source**: Preset might reference resources from different catalog
 
 #### Performance Issues
 
@@ -436,8 +436,8 @@ Tip: Do not hand-edit the manifest; scripts keep it correct based on package.jso
 ## Next Steps
 
 🎯 **Try it out**: Create a simple catalog and experiment with activating resources  
-🎩 **Make your first Hat**: Save a useful combination as a preset  
-👥 **Share with team**: Commit your catalog and hats to Git  
+🎩 **Make your first Preset**: Save a useful combination as a preset  
+👥 **Share with team**: Commit your catalog and presets to Git  
 ⚡ **Iterate**: Refine your setup based on what works for your workflow  
 
 **Happy cataloging!** 🚀
