@@ -1,1 +1,19 @@
-{"compilerOptions": {"allowJs": true,"module": "commonjs","target": "es2022","outDir": "dist","lib": ["es2022", "dom"],"sourceMap": true,"rootDir": ".","strict": true,"esModuleInterop": true,"forceConsistentCasingInFileNames": true,"skipLibCheck": true},"include": ["src","test"],"exclude": ["node_modules", ".vscode-test"]}
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "module": "commonjs",
+    "target": "es2022",
+    "outDir": "dist",
+    "lib": ["es2022", "dom"],
+    "sourceMap": true,
+    "rootDir": ".",
+    "strict": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "moduleResolution": "node",
+    "types": ["node", "vscode"]
+  },
+  "include": ["src", "test"],
+  "exclude": ["node_modules", ".vscode-test"]
+}
