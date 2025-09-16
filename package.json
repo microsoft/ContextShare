@@ -276,6 +276,14 @@
       {
         "command": "copilotCatalog.user.enable",
         "title": "User: Enable"
+      },
+      {
+        "command": "copilotCatalog.activateGroup",
+        "title": "Group: Activate All"
+      },
+      {
+        "command": "copilotCatalog.deactivateGroup",
+        "title": "Group: Deactivate All"
       }
     ],
     "menus": {
@@ -334,6 +342,16 @@
           "when": "view =~ /copilotCatalog.*/ && viewItem == resource-user-disabled",
           "command": "copilotCatalog.user.enable",
           "group": "inline@1"
+        },
+        {
+          "when": "view =~ /copilotCatalog.*/ && viewItem == resource-group",
+          "command": "copilotCatalog.activateGroup",
+          "group": "inline@1"
+        },
+        {
+          "when": "view =~ /copilotCatalog.*/ && viewItem == resource-group",
+          "command": "copilotCatalog.deactivateGroup",
+          "group": "inline@2"
         }
       ],
       "view/title": [

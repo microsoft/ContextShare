@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- PackageManifest Version is the VSIX schema version (keep at 2.0.0). Extension semantic version is on the Identity element. -->
-<PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
+<PackageManifest Version="0.3.6" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
   <Metadata>
   <Identity Language="en-US" Id="contextshare" Version="0.3.6" Publisher="ContextShare" />
     <DisplayName>ContextShare</DisplayName>

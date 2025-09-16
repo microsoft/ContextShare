@@ -50,9 +50,23 @@ export interface Resource {
 	catalogName?: string;   // Name of the catalog source this resource came from
 	// User resources can be disabled via rename (e.g., .disabled suffix)
 	disabled?: boolean;
+	// Group path within the category, e.g., "ai-agents" for chatmodes/ai-agents/code-assistant.chatmode.md
+	groupPath?: string;
 }
 
 export interface OperationResult { success: boolean; resource: Resource; message: string; details?: string }
+
+// Resource group for organizing related resources hierarchically
+export interface ResourceGroup {
+	id: string;                 // unique identifier for the group
+	name: string;               // display name (folder name)
+	path: string;               // relative path within category, e.g., "ai-agents" or "workflows/advanced"
+	category: ResourceCategory; // which category this group belongs to
+	resources: Resource[];      // resources in this group
+	enabled: boolean;           // whether the group is enabled (all resources activated)
+	partiallyEnabled?: boolean; // if some but not all resources are active
+	children?: ResourceGroup[]; // nested sub-groups for deeper hierarchies
+}
 
 export interface ActivateOptions { merge?: boolean }
 
@@ -92,6 +106,9 @@ export interface IResourceService {
 	clearRemoteCache(): void;
 	enableUserResource(resource: Resource): Promise<OperationResult>;
 	disableUserResource(resource: Resource): Promise<OperationResult>;
+	buildResourceGroups(resources: Resource[], category: ResourceCategory): ResourceGroup[];
+	activateResourceGroup(group: ResourceGroup): Promise<OperationResult[]>;
+	deactivateResourceGroup(group: ResourceGroup): Promise<OperationResult[]>;
 }
 
 // Minimal tree item that works both inside VS Code and in tests
