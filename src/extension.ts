@@ -24,7 +24,7 @@ let enableFileLogging = false;
 let logFilePath: string | undefined;
 // logger.init will be called during activation once context and config are available
 
-async function discoverRepositories(runtimeDirName: string): Promise<Repository[]> {
+async function discoverRepositories(runtimeDirName: string, resolveWorkspacePath?: (input?: string) => string | undefined): Promise<Repository[]> {
 	const repos: Repository[] = [];
 	const config = vscode.workspace.getConfiguration();
 	const catalogDirectories = config.get<Record<string, string>>('copilotCatalog.catalogDirectory', {});
@@ -60,14 +60,21 @@ async function discoverRepositories(runtimeDirName: string): Promise<Repository[
 		// Use explicitly configured catalog directories
 		for (const [catalogPath, displayName] of Object.entries(catalogDirectories)) {
 			try {
-				// Handle both absolute and relative paths
+				// Resolve catalog path using workspace folder token expansion if available
 				let absoluteCatalogPath: string;
-				if (path.isAbsolute(catalogPath)) {
-					absoluteCatalogPath = catalogPath;
+				if (resolveWorkspacePath) {
+					const resolvedPath = resolveWorkspacePath(catalogPath);
+					if (!resolvedPath) continue;
+					absoluteCatalogPath = resolvedPath;
 				} else {
-					const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-					if (!workspaceFolder) continue;
-					absoluteCatalogPath = path.join(workspaceFolder.uri.fsPath, catalogPath);
+					// Fallback to basic path resolution
+					if (path.isAbsolute(catalogPath)) {
+						absoluteCatalogPath = catalogPath;
+					} else {
+						const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+						if (!workspaceFolder) continue;
+						absoluteCatalogPath = path.join(workspaceFolder.uri.fsPath, catalogPath);
+					}
 				}
 				
 				await vscode.workspace.fs.stat(vscode.Uri.file(absoluteCatalogPath));
@@ -225,7 +232,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		resourceService.setRuntimeDirectoryName(runtimeDirName);
 		resourceService.setRemoteCacheTtl(config.get<number>('copilotCatalog.remoteCacheTtlSeconds', 300));
 
-		let repositories: Repository[] = await discoverRepositories(runtimeDirName);
+		let repositories: Repository[] = await discoverRepositories(runtimeDirName, resolveWorkspacePath);
 		let currentRepo: Repository | undefined = repositories[0];
 		let resources: Resource[] = [];
 
@@ -410,7 +417,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		async function refresh() {
 			try {
 				logger.info('Refresh started');
-				repositories = await discoverRepositories(runtimeDirName);
+				repositories = await discoverRepositories(runtimeDirName, resolveWorkspacePath);
 				await ensureVirtualRepoIfNeeded();
 				if (!currentRepo || !repositories.find(r => r.id === currentRepo?.id)) {
 					currentRepo = repositories[0];
