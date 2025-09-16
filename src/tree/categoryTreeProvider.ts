@@ -158,11 +158,11 @@ export class CategoryTreeProvider {
     // Set icon based on group state
     let iconId: string | undefined;
     if (group.enabled) {
-      iconId = 'folder-active'; // Use a folder icon with checkmark
+      iconId = 'check'; // Use checkmark for fully enabled groups
     } else if (group.partiallyEnabled) {
-      iconId = 'folder-warn'; // Use a folder icon with warning
+      iconId = 'warning'; // Use warning for partially enabled groups
     } else {
-      iconId = 'folder'; // Use a regular folder icon
+      iconId = 'folder'; // Use a regular folder icon for disabled groups
     }
     
     if (iconId && vscode) {
