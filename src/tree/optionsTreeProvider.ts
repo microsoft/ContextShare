@@ -57,14 +57,14 @@ export class OptionsTreeProvider {
         ]
       },
       {
-        id: 'hats',
-        label: 'Hats',
+        id: 'presets',
+        label: 'Presets',
         icon: 'kebab-vertical',
         children: [
-          { id: 'hats-apply', label: 'Apply Hat (Preset)', icon: 'play', command: 'copilotCatalog.hats.apply' },
-          { id: 'hats-save-workspace', label: 'Save Hat from Active (Workspace)', icon: 'save', command: 'copilotCatalog.hats.createWorkspace' },
-          { id: 'hats-save-user', label: 'Save Hat from Active (User)', icon: 'account', command: 'copilotCatalog.hats.createUser' },
-          { id: 'hats-delete', label: 'Delete Hat (Workspace/User)', icon: 'trash', command: 'copilotCatalog.hats.delete' }
+          { id: 'presets-apply', label: 'Apply Preset', icon: 'play', command: 'copilotCatalog.presets.apply' },
+          { id: 'presets-save-workspace', label: 'Save Preset from Active (Workspace)', icon: 'save', command: 'copilotCatalog.presets.createWorkspace' },
+          { id: 'presets-save-user', label: 'Save Preset from Active (User)', icon: 'account', command: 'copilotCatalog.presets.createUser' },
+          { id: 'presets-delete', label: 'Delete Preset (Workspace/User)', icon: 'trash', command: 'copilotCatalog.presets.delete' }
         ]
       },
       {

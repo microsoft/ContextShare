@@ -192,7 +192,7 @@ export function createExpectedTargets(workspaceRoot: string) {
     prompt: path.join(workspaceRoot, '.github', 'prompts'), 
     task: path.join(workspaceRoot, '.github', 'tasks'),
     instruction: path.join(workspaceRoot, '.github', 'instructions'),
-    hat: path.join(workspaceRoot, '.github', 'hats'),
+    preset: path.join(workspaceRoot, '.github', 'presets'),
     mcp: path.join(workspaceRoot, '.vscode', 'mcp.json')
   };
 }

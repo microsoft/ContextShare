@@ -8,8 +8,30 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 
 ## [Unreleased]
 ### Changed
+- Renamed "Hats" to "Presets" throughout the extension, including UI, commands, and documentation.
+
+### Added
+- Git Catalog: Branch enumeration (uses `git ls-remote --heads`) with quick pick UI when adding a remote repository.
+- Git Catalog: Ability to lock a remote to a specific commit SHA (stores `lockedCommit` and prevents automatic branch updates).
+- Git Catalog: Interactive refresh flow prompting per-remote when a newer branch head is detected (update / skip / lock).
+- Git Catalog: Command `copilotCatalog.dev.listGitRemotes` to view status (tracking vs locked, current / pending commit).
+- Git Catalog: Commit update detection without forcing fetch/reset when not desired.
+- Git Catalog: Backward-compatible metadata upgrade (meta version 2 adds `lockedCommit`).
+- Tests: Added integration tests for branch listing, locked commit behavior, and update detection logic.
+
+### Changed
 - Updated activity bar icon to a catalog book design that better represents the ContextShare functionality. The new icon features a book/catalog with organized content lines and a small AI indicator dot.
 
+### Technical
+- New service APIs: `listRemoteBranches`, `getRemoteHead`, `detectBranchUpdate`.
+- Enhanced clone/update path with locked commit checkout logic and selective scanning.
+- Persisted meta now includes `lockedCommit`; upgrade path from version 1 handled automatically.
+- Added interactive UX in `scanGitRepository` and `refreshGitRepositories` commands.
+- Added command palette entry to list remotes and their statuses.
+
+### Notes
+- Locked remotes skip automatic branch fetch/reset and only rescan if local commit not yet recorded.
+- Interactive refresh avoids unintended updates, giving explicit control or allowing lock-in of the new commit.
 ## [0.1.35] - 2025-08-23
 ### Changed
 - Duplicate handling logic: when a catalog (or remote) resource is ACTIVE or MODIFIED its corresponding runtime copy is no longer shown as a separate `user` item; instead the catalog entry with its state icon is kept. This prevents seeing both "user" and catalog rows for the same activated asset across multiple catalogs.
@@ -127,4 +149,3 @@ The format is based on Keep a Changelog and this project adheres to Semantic Ver
 ## [0.1.22] - 2025-08-18
 ### Fixed
 - Dev commands now work in headless/tunnel sessions: picker dialogs are wrapped in try/catch with manual input fallbacks (path input or typed action selection) and logging.
-

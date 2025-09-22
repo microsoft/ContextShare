@@ -7,7 +7,7 @@
 [![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/ContextShare.contextshare)](https://marketplace.visualstudio.com/items?itemName=ContextShare.contextshare)
 [![Security Policy](https://img.shields.io/badge/Security-Policy-blue.svg)](./SECURITY.md)
 
-Unified AI workflow catalog for VS Code: manage and share chat modes, instructions, prompts, tasks - plus upcoming MCP server orchestration - across all your repositories from one consistent UI. Reduce prompt drift, standardize team AI usage, and reuse curated presets ("Hats").
+Unified AI workflow catalog for VS Code: manage and share chat modes, instructions, prompts, tasks - plus upcoming MCP server orchestration - across all your repositories from one consistent UI. Reduce prompt drift, standardize team AI usage, and reuse curated presets.
 
 ## ✨ Feature Highlights
 
@@ -19,7 +19,7 @@ Core value: a single, structured, multi-catalog layer for AI assistant resources
 - Prompts (templated starting points)
 - Tasks (JSON task configs)
 - MCP Integration (coming soon)
-- Hats (presets bundling multiple resources)
+- Presets (presets bundling multiple resources)
 - Real‑time sync & state tracking (INACTIVE / ACTIVE / MODIFIED)
 - Safe activation (never overwrites user‑created originals)
 - Secure: HTTPS-only remotes + path & filename sanitization
@@ -32,8 +32,8 @@ Core value: a single, structured, multi-catalog layer for AI assistant resources
 | Instructions  | Shared guideline sets               | `.github/instructions/`         | `*.instructions.md` (legacy *.instruction.md) | ✅ |
 | Prompts       | Prompt templates / starters         | `.github/prompts/`              | `*.prompt.md`                           | ✅     |
 | Tasks         | Automation / action configurations  | `.github/tasks/`                | `*.task.json`                           | ✅     |
-| MCP Servers   | Model Context Protocol sources      | `.vscode/mcp.json`              | Merged composite file                   | � Coming soon |
-| Hats          | Declarative preset bundles          | `.github/hats/`                 | `*.json` (see example below)            | ✅     |
+| MCP Servers   | Model Context Protocol sources      | `.vscode/mcp.json`              | Merged composite file                   |  Coming soon |
+| Presets       | Declarative preset bundles          | `.github/presets/`              | `*.json` (see example below)            | ✅     |
 
 State logic: ACTIVE resources are copied to runtime; MODIFIED indicates the runtime file diverged from its source (e.g., team-local customization).
 
@@ -46,11 +46,11 @@ Install from the VS Code Marketplace: [ContextShare](https://marketplace.visuals
 1. Open the ContextShare Activity Bar view.
 2. Add a catalog (Options → Add Catalog Directory… or add a remote HTTPS URL).
 3. Activate a resource (right‑click → Activate).
-4. (Optional) Apply a Hat preset to activate multiple at once.
+4. (Optional) Apply a Preset to activate multiple at once.
 5. Edit runtime copies under `.github/**` if you need local tweaks (they'll show as MODIFIED).
 
-### Hats (Presets)
-Hats are small JSON descriptors bundling chosen chat mode + instructions + prompts + tasks (+ soon MCP servers) into a one‑click activation set. Great for role or workflow switching (e.g., "Full Stack Review", "Security Audit").
+### Presets
+Presets are small JSON descriptors bundling chosen chat mode + instructions + prompts + tasks (+ soon MCP servers) into a one‑click activation set. Great for role or workflow switching (e.g., "Full Stack Review", "Security Audit").
 
 ### Example Catalog Structure
 
@@ -66,7 +66,7 @@ example-catalog/
 │   └── automated-testing.task.json
 ├── mcp/
 │   └── development-servers.mcp.json
-└── hats/
+└── presets/
     └── full-stack-dev.json
 ```
 
@@ -78,7 +78,7 @@ example-catalog/
 - [Changelog](./CHANGELOG.md) - Version history and release notes
 - [Catalog Display Names](./CATALOG_DISPLAY_NAMES_EXAMPLE.md) - Naming conventions and examples
 
-## � Configuration Examples
+##  Configuration Examples
 
 Add catalogs in `.vscode/settings.json`:
 
@@ -104,7 +104,7 @@ Remote `index.json` (HTTPS only):
 }
 ```
 
-Sample Hat (`.github/hats/full-stack-dev.json`):
+Sample Preset (`.github/presets/full-stack-dev.json`):
 
 ```json
 {
@@ -167,10 +167,9 @@ Report vulnerabilities privately via the Security Policy (responsible disclosure
 | Remote catalog empty | `index.json` not reachable / HTTP error | Open URL in browser; ensure HTTPS and correct raw path |
 | Resource shows MODIFIED unexpectedly | Local edit vs source catalog | Diff runtime file in `.github/**` with original source |
 | Removed MCP server persists | (Upcoming MCP feature) cached merged entry | After MCP feature release: remove from source & reload window |
-| Hat not applying all items | Missing referenced filenames | Check JSON fields and ensure each resource exists |
+| Preset not applying all items | Missing referenced filenames | Check JSON fields and ensure each resource exists |
 
 If stuck, enable verbose logging (future setting) or open an issue with a minimal reproduction.
-
 
 ## 🏷️ Versioning
 
@@ -186,4 +185,3 @@ This project adheres to the [Contributor Covenant Code of Conduct](./CODE_OF_CON
 ## Trademarks
 
 All product names, logos, and brands are property of their respective owners. Use of any third-party trademarks or logos does not imply endorsement.
-

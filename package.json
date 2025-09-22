@@ -22,8 +22,8 @@
   "contributes": {
     "submenus": [
       {
-        "id": "copilotCatalog.hatsMenu",
-        "label": "Hats",
+        "id": "copilotCatalog.presetsMenu",
+        "label": "Presets",
         "icon": "$(kebab-vertical)"
       },
       {
@@ -227,26 +227,26 @@
         "title": "ContextShare: Edit Activated Copy"
       },
       {
-        "command": "copilotCatalog.hats.apply",
-        "title": "ContextShare: Apply Hat (Preset)",
+        "command": "copilotCatalog.presets.apply",
+        "title": "ContextShare: Apply Preset",
         "icon": {
-          "light": "resources/icons/hat-light.svg",
-          "dark": "resources/icons/hat-dark.svg"
+          "light": "resources/icons/preset-light.svg",
+          "dark": "resources/icons/preset-dark.svg"
         }
       },
       {
-        "command": "copilotCatalog.hats.createWorkspace",
-        "title": "ContextShare: Save Hat from Active (Workspace)",
+        "command": "copilotCatalog.presets.createWorkspace",
+        "title": "ContextShare: Save Preset from Active (Workspace)",
         "icon": "$(save)"
       },
       {
-        "command": "copilotCatalog.hats.createUser",
-        "title": "ContextShare: Save Hat from Active (User)",
+        "command": "copilotCatalog.presets.createUser",
+        "title": "ContextShare: Save Preset from Active (User)",
         "icon": "$(account)"
       },
       {
-        "command": "copilotCatalog.hats.delete",
-        "title": "ContextShare: Delete Hat (Workspace/User)",
+        "command": "copilotCatalog.presets.delete",
+        "title": "ContextShare: Delete Preset (Workspace/User)",
         "icon": "$(trash)"
       },
       {
@@ -343,7 +343,7 @@
           "group": "navigation"
         },
         {
-          "submenu": "copilotCatalog.hatsMenu",
+          "submenu": "copilotCatalog.presetsMenu",
           "when": "view == copilotCatalogOverview || view == copilotCatalogChatmodes",
           "group": "navigation@b"
         },
@@ -353,24 +353,24 @@
           "group": "navigation@c"
         }
       ],
-      "copilotCatalog.hatsMenu": [
+      "copilotCatalog.presetsMenu": [
         {
-          "command": "copilotCatalog.hats.apply",
+          "command": "copilotCatalog.presets.apply",
           "when": "view == copilotCatalogOverview || view == copilotCatalogChatmodes",
           "group": "1"
         },
         {
-          "command": "copilotCatalog.hats.createWorkspace",
+          "command": "copilotCatalog.presets.createWorkspace",
           "when": "view == copilotCatalogOverview || view == copilotCatalogChatmodes",
           "group": "2"
         },
         {
-          "command": "copilotCatalog.hats.createUser",
+          "command": "copilotCatalog.presets.createUser",
           "when": "view == copilotCatalogOverview || view == copilotCatalogChatmodes",
           "group": "2"
         },
         {
-          "command": "copilotCatalog.hats.delete",
+          "command": "copilotCatalog.presets.delete",
           "when": "view == copilotCatalogOverview || view == copilotCatalogChatmodes",
           "group": "3"
         }
