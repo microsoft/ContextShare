@@ -8,6 +8,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { Repository, Resource, ResourceCategory, ResourceState } from './models';
 import { FileService } from './services/fileService';
+import { GitCatalogService, RemoteGitSpec } from './services/gitCatalogService';
 import { HatService } from './services/hatService';
 import { ResourceService } from './services/resourceService';
 import { CategoryTreeProvider } from './tree/categoryTreeProvider';
@@ -122,9 +123,10 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	preflightLog('Activating...');
 
-	try {
-		const fileService = new FileService();
-		const resourceService = new ResourceService(fileService);
+try {
+const fileService = new FileService();
+const resourceService = new ResourceService(fileService);
+const gitCatalogService = new GitCatalogService(fileService);
 		// Configure structured logger now that we have context and config.
 		enableFileLogging = !!vscode.workspace.getConfiguration().get<boolean>('copilotCatalog.enableFileLogging', false);
 		logFilePath = path.join(context.globalStorageUri.fsPath, LOG_FILENAME);
@@ -748,7 +750,123 @@ export async function activate(context: vscode.ExtensionContext) {
 					await refresh();
 				} catch(e:any){ vscode.window.showErrorMessage('Failed to create template catalog: ' + getErrorMessage(e)); }
 			}),
-			vscode.commands.registerCommand('copilotCatalog.dev.configureSettings', async () => {
+vscode.commands.registerCommand('copilotCatalog.dev.scanGitRepository', async () => {
+// Command to scan a remote Git repository for catalogs
+const url = await vscode.window.showInputBox({ 
+prompt: 'Enter Git repository URL (e.g., https://github.com/org/repo.git)',
+placeHolder: 'https://github.com/org/repo.git'
+});
+if (!url) return;
+
+const branch = await vscode.window.showInputBox({
+prompt: 'Enter branch name (optional, defaults to main)',
+placeHolder: 'main'
+});
+
+try {
+await logger.info(`Adding Git repository: ${url} (branch: ${branch || 'main'})`);
+vscode.window.showInformationMessage('Scanning repository for catalogs...');
+
+// Initialize the git catalog service with global storage
+await gitCatalogService.init([], context.globalStorageUri.fsPath);
+
+// Add the remote and scan for catalogs
+await gitCatalogService.addRemoteInteractively(url, branch || 'main');
+
+// Get the discovered catalog directories
+const catalogMap = gitCatalogService.getCatalogDirectoryMap();
+const catalogs = Object.entries(catalogMap);
+
+if (catalogs.length === 0) {
+vscode.window.showInformationMessage('No catalogs found in the repository.');
+return;
+}
+
+// Show discovered catalogs and let user select which to add
+const picks = catalogs.map(([catalogPath, displayName]) => ({
+label: path.basename(catalogPath),
+description: displayName,
+detail: catalogPath,
+path: catalogPath,
+displayName: displayName
+}));
+
+const selected = await vscode.window.showQuickPick(picks, {
+canPickMany: true,
+placeHolder: 'Select catalogs to add'
+});
+
+if (!selected || selected.length === 0) return;
+
+// Add selected catalogs to configuration
+const cfg = vscode.workspace.getConfiguration();
+const current = cfg.get<Record<string, string>>('copilotCatalog.catalogDirectory', {});
+const newEntries = { ...current };
+
+for (const item of selected) {
+// Use the local clone path for now (Git URL format can be added later)
+newEntries[item.path] = item.displayName;
+}
+
+await cfg.update('copilotCatalog.catalogDirectory', newEntries, vscode.ConfigurationTarget.Workspace);
+vscode.window.showInformationMessage(`Added ${selected.length} catalog(s) from Git repository.`);
+await refresh();
+
+} catch (error) {
+await logger.error(`Failed to scan Git repository: ${getErrorMessage(error)}`);
+vscode.window.showErrorMessage(`Failed to scan repository: ${getErrorMessage(error)}`);
+}
+}),
+// Refresh all previously added Git repositories (pull latest + rescan)
+vscode.commands.registerCommand('copilotCatalog.dev.refreshGitRepositories', async () => {
+try {
+await logger.info('Dev: Refresh Git Repositories command invoked');
+// Load previously persisted remotes (without wiping) if needed
+await gitCatalogService.ensureLoaded(context.globalStorageUri.fsPath);
+const remotes = gitCatalogService.getRemotes();
+
+if(remotes.length === 0){
+vscode.window.showInformationMessage('No persisted Git repositories found. Use "Scan Git Repository…" first.');
+return;
+}
+
+vscode.window.showInformationMessage(`Refreshing ${remotes.length} Git repos...`);
+await logger.info(`Refreshing ${remotes.length} git remotes`);
+
+// Perform fetch/reset + catalog rescan
+await gitCatalogService.refreshAll();
+
+// Collect catalog directory map after refresh
+const catalogMap = gitCatalogService.getCatalogDirectoryMap();
+
+// Merge newly discovered catalog paths into configuration
+const cfg = vscode.workspace.getConfiguration();
+const current = cfg.get<Record<string,string>>('copilotCatalog.catalogDirectory', {});
+let changed = false;
+for(const [p, name] of Object.entries(catalogMap)){
+if(!current.hasOwnProperty(p)){
+current[p] = name;
+changed = true;
+}
+}
+if(changed){
+await cfg.update('copilotCatalog.catalogDirectory', current, vscode.ConfigurationTarget.Workspace);
+await logger.info(`Added ${Object.keys(catalogMap).length} catalog path(s) from refreshed remotes (some may have already existed).`);
+}
+
+// Trigger standard UI refresh
+await refresh();
+
+const updated = gitCatalogService.getRemotes();
+const withCommits = updated.filter(r=> !!r.lastCommit).length;
+vscode.window.showInformationMessage(`Git repositories refreshed. (${withCommits}/${updated.length} updated)`);
+await logger.info(`Git refresh complete: withCommits=${withCommits} total=${updated.length}`);
+} catch(e:any){
+await logger.error(`Git repositories refresh failed: ${getErrorMessage(e)}`);
+vscode.window.showErrorMessage('Failed to refresh Git repositories: ' + getErrorMessage(e));
+}
+}),
+vscode.commands.registerCommand('copilotCatalog.dev.configureSettings', async () => {
 				let pick: { label: string; action: 'openSettings'|'addDirectory'|'setTarget' } | undefined;
 				try {
 					pick = await vscode.window.showQuickPick([
