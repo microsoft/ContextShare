@@ -52,8 +52,18 @@ export class OptionsTreeProvider {
         label: 'Catalog',
         icon: 'library',
         children: [
-          { id: 'catalog-refresh', label: 'Refresh', icon: 'refresh', command: 'copilotCatalog.refresh' },
-          { id: 'catalog-filter', label: 'Filter by Catalog', icon: 'filter', command: 'copilotCatalog.filterCatalog' }
+          { id: 'catalog-refresh', label: 'Refresh All Catalogs', icon: 'refresh', command: 'copilotCatalog.refresh' },
+          { id: 'catalog-filter', label: 'Filter by Catalog', icon: 'filter', command: 'copilotCatalog.filterCatalog' },
+          {
+            id: 'git',
+            label: 'Git Repositories',
+            icon: 'repo',
+            children: [
+              { id: 'git-discover', label: 'Discover Git Repository…', icon: 'search', command: 'copilotCatalog.dev.scanGitRepository' },
+              { id: 'git-refresh', label: 'Refresh Git Repositories', icon: 'sync', command: 'copilotCatalog.dev.refreshGitRepositories' },
+              { id: 'git-list', label: 'List Git Remotes', icon: 'list-unordered', command: 'copilotCatalog.dev.listGitRemotes' }
+            ]
+          }
         ]
       },
       {
@@ -74,10 +84,7 @@ export class OptionsTreeProvider {
         children: [
           { id: 'dev-open-settings', label: 'Open Settings', icon: 'gear', command: 'copilotCatalog.openSettings' },
           { id: 'dev-create-template', label: 'Create Template Catalog', icon: 'new-folder', command: 'copilotCatalog.dev.createTemplateCatalog' },
-          { id: 'dev-add-dir', label: 'Add Catalog Directory…', icon: 'folder-opened', command: 'copilotCatalog.addCatalogDirectory' },
-          { id: 'dev-scan-git', label: 'Scan Git Repository…', icon: 'repo', command: 'copilotCatalog.dev.scanGitRepository' },
-          { id: 'dev-refresh-git', label: 'Refresh Git Repositories', icon: 'sync', command: 'copilotCatalog.dev.refreshGitRepositories' },
-          { id: 'dev-list-git', label: 'List Git Remotes', icon: 'list-unordered', command: 'copilotCatalog.dev.listGitRemotes' }
+          { id: 'dev-add-dir', label: 'Add Catalog Directory…', icon: 'folder-opened', command: 'copilotCatalog.addCatalogDirectory' }
         ]
       }
     ];
