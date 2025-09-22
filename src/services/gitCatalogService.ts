@@ -14,10 +14,11 @@ const execAsync = promisify(exec);
 export interface RemoteGitSpec {
   url: string;                 // HTTPS or SSH URL (HTTPS preferred for MVP)
   branch?: string;            // default 'main'
+  lockedCommit?: string;      // optional specific commit SHA to lock to (disables auto branch updates)
   includePaths?: string[];    // optional relative paths to constrain scan
   displayNamePrefix?: string; // optional UI prefix
-  depth?: number;            // optional shallow depth default 1
-  disabled?: boolean;        // optional flag to disable without removing
+  depth?: number;             // optional shallow depth default 1
+  disabled?: boolean;         // optional flag to disable without removing
 }
 
 // Metadata about a discovered catalog within a remote
@@ -34,6 +35,7 @@ interface RemoteMeta {
   clonePath: string;
   lastUpdated: string;
   lastCommit?: string;
+  lockedCommit?: string;       // when set, repo is pinned to this commit (no automatic fetch/reset)
   specsHash: string;
   catalogs: CatalogCandidate[];
   includePaths?: string[];
@@ -43,6 +45,11 @@ interface RemoteMeta {
 interface GitCatalogMeta {
   version: number;
   remotes: RemoteMeta[];
+}
+
+interface BranchInfo {
+  name: string;
+  commit: string;
 }
 
 const CATEGORY_DIRS: Record<ResourceCategory, string> = {
@@ -193,18 +200,26 @@ export class GitCatalogService {
     try {
       const raw = await this.fileService.readFile(metaPath);
       const meta = JSON.parse(raw);
-      if (meta.version === 1 && Array.isArray(meta.remotes)) {
+      if ((meta.version === 1 || meta.version === 2) && Array.isArray(meta.remotes)) {
+        // Upgrade v1 -> v2 (introduces lockedCommit support)
+        if (meta.version === 1) {
+          meta.version = 2;
+        }
+        meta.remotes = meta.remotes.map((r: any) => ({
+          ...r
+          // lockedCommit may already exist or be undefined
+        }));
         return meta;
       }
     } catch {
       // File doesn't exist or invalid
     }
-    return { version: 1, remotes: [] };
+    return { version: 2, remotes: [] };
   }
 
   private async saveMeta(metaPath: string): Promise<void> {
     const meta: GitCatalogMeta = {
-      version: 1,
+      version: 2,
       remotes: this.remotes
     };
     await this.fileService.writeFile(metaPath, JSON.stringify(meta, null, 2));
@@ -303,13 +318,61 @@ export class GitCatalogService {
 
   private async ensureRemoteCloned(remote: RemoteMeta): Promise<void> {
     const exists = await this.fileService.pathExists(remote.clonePath);
-    
+
+    // If locked to a specific commit, cloning/updating strategy changes:
+    if (remote.lockedCommit) {
+      if (!exists) {
+        // Clone the branch (or default) then checkout locked commit
+        this.log(`Cloning (locked) ${remote.url}@${remote.branch} -> ${remote.clonePath}`);
+        const depth = 1;
+        const cmd = `git clone --depth=${depth} --branch ${remote.branch} ${remote.url} "${remote.clonePath}"`;
+        try {
+          await this.runGit(cmd);
+        } catch (err) {
+          throw new Error(`Git clone failed: ${sanitizeErrorMessage(err)}`);
+        }
+      }
+      try {
+        // Ensure the locked commit is available (fetch by SHA best-effort)
+        const { stdout: headStdout } = await this.runGit(`git -C "${remote.clonePath}" rev-parse HEAD`);
+        const localHead = headStdout.trim();
+        if (localHead !== remote.lockedCommit) {
+          this.log(`Checking out locked commit ${remote.lockedCommit.substring(0,8)} for ${remote.url}`);
+          try {
+            // Try to fetch the specific commit (may fail if already present)
+            await this.runGit(`git -C "${remote.clonePath}" fetch origin ${remote.lockedCommit} --depth=1`);
+          } catch {
+            // Ignore fetch failure; commit may already exist
+          }
+          await this.runGit(`git -C "${remote.clonePath}" checkout ${remote.lockedCommit}`);
+        }
+        const { stdout: newHeadStdout } = await this.runGit(`git -C "${remote.clonePath}" rev-parse HEAD`);
+        const currentCommit = newHeadStdout.trim();
+        if (currentCommit !== remote.lastCommit || remote.catalogs.length === 0) {
+          this.log(`Scanning locked repo (commit: ${currentCommit.substring(0,8)})`);
+          remote.lastCommit = currentCommit;
+          remote.catalogs = await this.discoverCatalogRoots(
+            remote.clonePath,
+            remote.includePaths,
+            remote.url,
+            remote.branch,
+            remote.displayNamePrefix
+          );
+          remote.lastUpdated = new Date().toISOString();
+          this.log(`Found ${remote.catalogs.length} catalog(s) in locked repo ${remote.url}`);
+        }
+        return; // Done for locked remotes
+      } catch (err) {
+        this.log(`Locked commit handling failed: ${getErrorMessage(err)}`);
+        return;
+      }
+    }
+
+    // Branch-tracking mode (no lockedCommit)
     if (!exists) {
-      // Clone repository
       this.log(`Cloning ${remote.url}@${remote.branch} to ${remote.clonePath}`);
-      const depth = 1; // Shallow clone by default
+      const depth = 1;
       const cmd = `git clone --depth=${depth} --branch ${remote.branch} ${remote.url} "${remote.clonePath}"`;
-      
       try {
         await this.runGit(cmd);
         this.log(`Clone successful: ${remote.url}`);
@@ -317,7 +380,7 @@ export class GitCatalogService {
         throw new Error(`Git clone failed: ${sanitizeErrorMessage(err)}`);
       }
     } else {
-      // Update existing clone
+      // For future interactive update control we could skip automatic update here.
       this.log(`Updating ${remote.url}@${remote.branch}`);
       try {
         await this.runGit(`git -C "${remote.clonePath}" fetch origin ${remote.branch} --depth=1`);
@@ -327,22 +390,19 @@ export class GitCatalogService {
         this.log(`Update failed (will continue): ${getErrorMessage(err)}`);
       }
     }
-    
-    // Get current commit
+
     try {
       const { stdout } = await this.runGit(`git -C "${remote.clonePath}" rev-parse HEAD`);
       const currentCommit = stdout.trim();
-      
-      // Rescan if commit changed or first scan
       if (currentCommit !== remote.lastCommit || remote.catalogs.length === 0) {
         this.log(`Scanning for catalogs (commit: ${currentCommit.substring(0, 8)})`);
         remote.lastCommit = currentCommit;
         remote.catalogs = await this.discoverCatalogRoots(
           remote.clonePath,
-          remote.includePaths,
-          remote.url,
-          remote.branch,
-          remote.displayNamePrefix
+            remote.includePaths,
+            remote.url,
+            remote.branch,
+            remote.displayNamePrefix
         );
         remote.lastUpdated = new Date().toISOString();
         this.log(`Found ${remote.catalogs.length} catalog(s) in ${remote.url}`);
@@ -518,6 +578,7 @@ export class GitCatalogService {
   async addRemoteInteractively(
     url: string,
     branch: string = 'main',
+    lockedCommit?: string,
     includePaths?: string[],
     displayNamePrefix?: string
   ): Promise<void> {
@@ -536,6 +597,7 @@ export class GitCatalogService {
     const spec: RemoteGitSpec = {
       url,
       branch,
+      lockedCommit,
       includePaths,
       displayNamePrefix,
       depth: 1
@@ -551,6 +613,8 @@ export class GitCatalogService {
       branch,
       clonePath,
       lastUpdated: new Date().toISOString(),
+      lastCommit: undefined,
+      lockedCommit,
       specsHash: this.hashSpec(spec),
       catalogs: [],
       includePaths,
@@ -587,15 +651,14 @@ export class GitCatalogService {
     const remote = this.remotes[index];
     this.remotes.splice(index, 1);
     
-    // Optionally delete clone directory
+    // Delete clone directory
     try {
-      const files = await this.fileService.listDirectory(remote.clonePath);
-      if (files.length > 0) {
-        // Directory exists, could delete it
-        this.log(`Clone directory preserved: ${remote.clonePath}`);
+      if (await this.fileService.pathExists(remote.clonePath)) {
+        await this.fileService.rm(remote.clonePath, { recursive: true, force: true });
+        this.log(`Deleted clone directory: ${remote.clonePath}`);
       }
-    } catch {
-      // Directory doesn't exist
+    } catch (err) {
+      this.log(`Failed to delete clone directory ${remote.clonePath}: ${getErrorMessage(err)}`);
     }
     
     // Save updated meta
@@ -608,6 +671,52 @@ export class GitCatalogService {
   async refreshAll(): Promise<void> {
     this.log('Refreshing all remotes');
     await this.ensureAllCloned();
+  }
+
+  async pruneUnusedCatalogs(activeCatalogPaths: string[]): Promise<void> {
+    const activePathsSet = new Set(activeCatalogPaths.map(p => path.resolve(p)));
+    const remotesToDelete: RemoteMeta[] = [];
+    const remotesToKeep: RemoteMeta[] = [];
+
+    for (const remote of this.remotes) {
+        // Only consider pruning if the remote has been scanned at least once
+        if (remote.lastCommit) {
+            const hasActiveCatalog = remote.catalogs.some(c => activePathsSet.has(path.resolve(c.catalogPath)));
+            if (hasActiveCatalog) {
+                remotesToKeep.push(remote);
+            } else {
+                // Also check if the repo root itself is a catalog path
+                if (activePathsSet.has(path.resolve(remote.clonePath))) {
+                    remotesToKeep.push(remote);
+                } else {
+                    remotesToDelete.push(remote);
+                }
+            }
+        } else {
+            // If never scanned, keep it. It might be a new remote waiting for its first clone/scan.
+            remotesToKeep.push(remote);
+        }
+    }
+
+    if (remotesToDelete.length > 0) {
+        this.log(`Pruning ${remotesToDelete.length} unused remote(s).`);
+        for (const remote of remotesToDelete) {
+            try {
+                if (await this.fileService.pathExists(remote.clonePath)) {
+                    await this.fileService.rm(remote.clonePath, { recursive: true, force: true });
+                    this.log(`Deleted unused clone directory: ${remote.clonePath}`);
+                }
+            } catch (err) {
+                this.log(`Failed to delete unused clone directory ${remote.clonePath}: ${getErrorMessage(err)}`);
+            }
+        }
+
+        this.remotes = remotesToKeep;
+        const metaPath = path.join(this.globalStoragePath, 'git-remotes', 'meta.json');
+        await this.saveMeta(metaPath);
+    } else {
+        this.log('No unused remotes to prune.');
+    }
   }
 
   getRemotes(): RemoteMeta[] {
@@ -643,6 +752,7 @@ export class GitCatalogService {
     const str = JSON.stringify({
       url: spec.url,
       branch: spec.branch,
+      lockedCommit: spec.lockedCommit,
       includePaths: spec.includePaths,
       displayNamePrefix: spec.displayNamePrefix
     });
@@ -655,6 +765,69 @@ export class GitCatalogService {
       hash = hash & hash;
     }
     return hash.toString(16);
+  }
+
+  // List remote branches (name + head commit) using git ls-remote
+  async listRemoteBranches(url: string): Promise<BranchInfo[]> {
+    if (!await this.validateGitAvailable()) {
+      throw new Error('Git not available');
+    }
+    try {
+      const { stdout } = await this.runGit(`git ls-remote --heads ${url}`);
+      // Lines: <sha>\trefs/heads/<name>
+      const branches: BranchInfo[] = stdout
+        .split(/\r?\n/)
+        .map(l => l.trim())
+        .filter(l => l.length > 0)
+        .map(line => {
+          const [commit, ref] = line.split(/\s+/);
+            const m = ref?.match(/^refs\/heads\/(.+)$/);
+            return m ? { name: m[1], commit } : undefined;
+        })
+        .filter((b): b is BranchInfo => !!b);
+      return branches;
+    } catch (err) {
+      this.log(`listRemoteBranches failed: ${getErrorMessage(err)}`);
+      return [];
+    }
+  }
+
+  // Get remote head commit for a specific branch
+  async getRemoteHead(url: string, branch: string): Promise<string | undefined> {
+    if (!await this.validateGitAvailable()) return undefined;
+    try {
+      const { stdout } = await this.runGit(`git ls-remote ${url} ${branch}`);
+      const line = stdout.split(/\r?\n/).find(l => l.includes('\t'));
+      if (!line) return undefined;
+      const [commit] = line.split(/\s+/);
+      return commit;
+    } catch (err) {
+      this.log(`getRemoteHead failed: ${getErrorMessage(err)}`);
+      return undefined;
+    }
+  }
+
+  async detectBranchUpdate(remote: RemoteMeta): Promise<{ hasUpdate: boolean; remoteHead?: string; current?: string }> {
+    if (remote.lockedCommit) {
+      return { hasUpdate: false, current: remote.lastCommit };
+    }
+    const remoteHead = await this.getRemoteHead(remote.url, remote.branch);
+    const current = remote.lastCommit;
+    if (remoteHead && current && remoteHead !== current) {
+      return { hasUpdate: true, remoteHead, current };
+    }
+    return { hasUpdate: false, remoteHead, current };
+  }
+
+  async updateTrackedRemote(remote: RemoteMeta): Promise<boolean> {
+    if (remote.lockedCommit) return false;
+    try {
+      await this.ensureRemoteCloned(remote);
+      return true;
+    } catch (err) {
+      this.log(`updateTrackedRemote failed: ${getErrorMessage(err)}`);
+      return false;
+    }
   }
 
   private getRepoName(url: string): string {

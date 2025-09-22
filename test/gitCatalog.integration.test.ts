@@ -1,5 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
+import * as assert from 'assert';
+import { suite, test } from 'mocha';
 import * as path from 'path';
 import { GitCatalogService, RemoteGitSpec } from '../src/services/gitCatalogService';
 import { MockFileService } from './fileService.mock';
@@ -41,32 +43,10 @@ function makeExecOverride(extra?: Record<string, { stdout?: string; stderr?: str
   };
 }
 
-// Simple test runner
-async function runTests() {
-  console.log('\n🧪 Git Catalog Integration Tests\n');
-  const tests: Array<{ name: string; fn: () => Promise<void> }> = [];
-  let passed = 0;
-  let failed = 0;
-
-  function test(name: string, fn: () => Promise<void>) {
-    tests.push({ name, fn });
-  }
-
-  function assert(condition: boolean, message: string) {
-    if (!condition) {
-      throw new Error(`Assertion failed: ${message}`);
-    }
-  }
-
-  function assertEquals(actual: any, expected: any, message?: string) {
-    const actualStr = JSON.stringify(actual);
-    const expectedStr = JSON.stringify(expected);
-    if (actualStr !== expectedStr) {
-      throw new Error(`${message || 'Values not equal'}\nExpected: ${expectedStr}\nActual: ${actualStr}`);
-    }
-  }
-
-  // Tests
+suite('Git Catalog Integration Tests', () => {
+  const assertEquals = (actual: any, expected: any, message?: string) => {
+    assert.deepStrictEqual(actual, expected, message);
+  };
 
   test('should initialize with empty remotes', async () => {
     const mockFileService = new MockFileService({});
@@ -146,7 +126,7 @@ async function runTests() {
     const specs: RemoteGitSpec[] = [{ url: 'https://github.com/test/repo.git', branch: 'main' }];
     await service.init(specs, '/test/global');
     await service.refreshAll(); // Should not throw
-    assert(true, 'Refresh completed');
+    assert.ok(true, 'Refresh completed');
   });
 
   test('should validate git availability', async () => {
@@ -155,7 +135,7 @@ async function runTests() {
     service.setExecOverride(makeExecOverride());
     await service.init([], '/test/global');
     const available = await service.validateGitAvailable();
-    assert(available, 'Git should be available');
+    assert.ok(available, 'Git should be available');
   });
 
   test('should handle non-HTTPS URLs', async () => {
@@ -167,7 +147,7 @@ async function runTests() {
       await service.addRemoteInteractively('git@github.com:user/repo.git', 'main');
       throw new Error('Should have rejected non-HTTPS URL');
     } catch (error: any) {
-      assert(error.message.includes('HTTPS'), 'Should mention HTTPS requirement');
+      assert.ok(error.message.includes('HTTPS'), 'Should mention HTTPS requirement');
     }
   });
 
@@ -204,27 +184,139 @@ async function runTests() {
     assertEquals(urls, ['https://github.com/test/repo1.git', 'https://github.com/test/repo2.git'], 'Recovered remote URLs mismatch');
   });
 
-  // Run all tests
-  for (const { name, fn } of tests) {
-    try {
-      await fn();
-      console.log(`✅ ${name}`);
-      passed++;
-    } catch (error: any) {
-      console.log(`❌ ${name}`);
-      console.log(`   ${error.message}`);
-      failed++;
-    }
-  }
+  // New tests for branch listing, locked commit, and update detection
+  
+  test('should list remote branches', async () => {
+    const mockFileService = new MockFileService({});
+    const service = new GitCatalogService(mockFileService);
+    service.setExecOverride(async (cmd: string) => {
+      if (cmd.startsWith('git --version')) return { stdout: 'git version 2.40.0', stderr: '' };
+      if (cmd.startsWith('git ls-remote --heads')) {
+        return { stdout: [
+          'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\trefs/heads/main',
+          'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\trefs/heads/feature/x',
+          'cccccccccccccccccccccccccccccccccccccccc\trefs/heads/develop'
+        ].join('\n'), stderr: '' };
+      }
+      if (cmd.startsWith('git clone')) return { stdout: '', stderr: '' };
+      if (cmd.includes('rev-parse HEAD')) return { stdout: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n', stderr: '' };
+      if (cmd.includes('rev-parse --abbrev-ref HEAD')) return { stdout: 'main\n', stderr: '' };
+      if (cmd.includes(' fetch origin ')) return { stdout: '', stderr: '' };
+      if (cmd.includes(' reset --hard ')) return { stdout: '', stderr: '' };
+      return { stdout: '', stderr: '' };
+    });
+    await service.init([], '/test/global');
+    const branches = await service.listRemoteBranches('https://github.com/test/repo.git');
+    const names = branches.map(b => b.name).sort();
+    const expected = ['develop', 'feature/x', 'main'];
+    assert.deepStrictEqual(names, expected, 'Branch names should match');
+  });
+  
+  test('should add remote locked to commit', async () => {
+    const lockedSha = '1234567890abcdef1234567890abcdef12345678';
+    const mockFileService = new MockFileService({});
+    const service = new GitCatalogService(mockFileService);
+    service.setExecOverride(async (cmd: string) => {
+      if (cmd.startsWith('git --version')) return { stdout: 'git version 2.40.0', stderr: '' };
+      if (cmd.startsWith('git clone')) return { stdout: '', stderr: '' };
+      if (cmd.includes(' fetch origin ')) return { stdout: '', stderr: '' };
+      if (cmd.includes(' checkout ')) return { stdout: '', stderr: '' };
+      if (cmd.includes('rev-parse HEAD')) return { stdout: lockedSha + '\n', stderr: '' };
+      if (cmd.includes('rev-parse --abbrev-ref HEAD')) return { stdout: 'main\n', stderr: '' };
+      return { stdout: '', stderr: '' };
+    });
+    await service.init([], '/test/global');
+    await service.addRemoteInteractively('https://github.com/test/locked.git', 'main', lockedSha);
+    const remotes = service.getRemotes();
+    assert.strictEqual(remotes.length, 1, 'Expected exactly one remote');
+    assert.strictEqual(remotes[0].lockedCommit, lockedSha, 'lockedCommit not set correctly');
+    assert.strictEqual(remotes[0].lastCommit, lockedSha, 'lastCommit should equal locked commit after scan');
+  });
+  
+  test('should detect branch update when remote head changes', async () => {
+    const originalSha = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    const newSha = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+    const mockFileService = new MockFileService({});
+    const service = new GitCatalogService(mockFileService);
+    
+    // First exec override for initial add (originalSha)
+    service.setExecOverride(async (cmd: string) => {
+      if (cmd.startsWith('git --version')) return { stdout: 'git version 2.40.0', stderr: '' };
+      if (cmd.startsWith('git clone')) return { stdout: '', stderr: '' };
+      if (cmd.includes(' fetch origin ')) return { stdout: '', stderr: '' };
+      if (cmd.includes(' reset --hard ')) return { stdout: '', stderr: '' };
+      if (cmd.includes('rev-parse HEAD')) return { stdout: originalSha + '\n', stderr: '' };
+      if (cmd.includes('rev-parse --abbrev-ref HEAD')) return { stdout: 'main\n', stderr: '' };
+      return { stdout: '', stderr: '' };
+    });
+    await service.init([], '/test/global');
+    await service.addRemoteInteractively('https://github.com/test/update.git', 'main');
+    
+    // Swap override to simulate new remote head
+    service.setExecOverride(async (cmd: string) => {
+      if (cmd.startsWith('git --version')) return { stdout: 'git version 2.40.0', stderr: '' };
+      if (cmd.startsWith('git ls-remote https://github.com/test/update.git main')) {
+        return { stdout: `${newSha}\trefs/heads/main\n`, stderr: '' };
+      }
+      if (cmd.includes('rev-parse HEAD')) return { stdout: originalSha + '\n', stderr: '' };
+      if (cmd.includes('rev-parse --abbrev-ref HEAD')) return { stdout: 'main\n', stderr: '' };
+      return { stdout: '', stderr: '' };
+    });
+    
+    const remote = service.getRemotes()[0];
+    const info = await service.detectBranchUpdate(remote as any);
+    assert.ok(info.hasUpdate, 'Expected hasUpdate=true');
+    assert.strictEqual(info.remoteHead, newSha, 'remoteHead mismatch');
+    assert.strictEqual(info.current, originalSha, 'current commit mismatch');
+  });
 
-  console.log('\n' + '='.repeat(50));
-  console.log(`Tests: ${passed} passed, ${failed} failed, ${tests.length} total`);
-  if (failed > 0) {
-    process.exit(1);
-  }
-}
+  test('should prune unused remote when its catalogs are no longer active', async () => {
+    const repo1Clone = '/test/global/git-remotes/repo1-main';
+    const repo2Clone = '/test/global/git-remotes/repo2-main';
+    const repo1Catalog = path.join(repo1Clone, 'catalogA');
+    const repo2Catalog = path.join(repo2Clone, 'catalogB');
 
-runTests().catch(error => {
-  console.error('Test runner failed:', error);
-  process.exit(1);
+    const metaContent = JSON.stringify({
+      version: 2,
+      remotes: [
+        {
+          url: 'https://github.com/test/repo1.git',
+          branch: 'main',
+          clonePath: repo1Clone,
+          lastCommit: 'abc',
+          catalogs: [{ catalogPath: repo1Catalog, repoRelPath: 'catalogA', displayName: 'repo1' }]
+        },
+        {
+          url: 'https://github.com/test/repo2.git',
+          branch: 'main',
+          clonePath: repo2Clone,
+          lastCommit: 'def',
+          catalogs: [{ catalogPath: repo2Catalog, repoRelPath: 'catalogB', displayName: 'repo2' }]
+        }
+      ]
+    });
+
+    const mockFileService = new MockFileService({
+      '/test/global/git-remotes/meta.json': metaContent,
+      [repo1Clone]: 'dir',
+      [repo2Clone]: 'dir',
+    });
+    (mockFileService as any).deletedPaths = new Set();
+
+    const service = new GitCatalogService(mockFileService);
+    service.setExecOverride(makeExecOverride());
+    await service.ensureLoaded('/test/global');
+
+    assertEquals(service.getRemotes().length, 2, 'Should start with two remotes');
+
+    // Prune, keeping only repo1's catalog active
+    await service.pruneUnusedCatalogs([repo1Catalog]);
+
+    const finalRemotes = service.getRemotes();
+    assertEquals(finalRemotes.length, 1, 'Should have one remote after pruning');
+    assertEquals(finalRemotes[0].url, 'https://github.com/test/repo1.git', 'Should keep repo1');
+
+    const deleted = (mockFileService as any).deletedPaths;
+    assert.ok(deleted.has(repo2Clone), 'Should have deleted the clone directory for repo2');
+  });
 });

@@ -67,14 +67,16 @@ export interface Hat {
 }
 
 export interface IFileService {
-	readFile(p: string): Promise<string>;
-	writeFile(p: string, content: string): Promise<void>;
-	ensureDirectory(p: string): Promise<void>;
-	pathExists(p: string): Promise<boolean>;
-	listDirectory(p: string): Promise<string[]>;
-	stat(p: string): Promise<'file'|'dir'|'other'|'missing'>;
-	copyFile(src: string, dest: string): Promise<void>;
-	deleteFile?(p: string): Promise<void>;
+readFile(p: string): Promise<string>;
+writeFile(p: string, content: string): Promise<void>;
+ensureDirectory(p: string): Promise<void>;
+pathExists(p: string): Promise<boolean>;
+listDirectory(p: string): Promise<string[]>;
+stat(p: string): Promise<'file'|'dir'|'other'|'missing'>;
+  copyFile(src: string, dest: string): Promise<void>;
+  deleteFile?(p: string): Promise<void>;
+  deleteDirectory?(p: string): Promise<void>;
+  rm(path: string, options?: { recursive?: boolean; force?: boolean }): Promise<void>;
 }
 
 export interface IResourceService {
@@ -108,4 +110,3 @@ export class CatalogTreeItem {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	command?: any;
 }
-

@@ -23,4 +23,22 @@ export class MockFileService implements IFileService {
   async stat(p: string){ const norm = path.resolve(p); if(this.files.has(norm)) return 'file'; if(this.dirs.has(norm)) return 'dir'; return 'missing'; }
   async copyFile(src: string, dest: string){ const s = path.resolve(src); const d = path.resolve(dest); if(!this.files.has(s)) throw new Error('missing src'); this.files.set(d, this.files.get(s)!); this.dirs.add(path.dirname(d)); }
   async deleteFile(p: string){ const norm = path.resolve(p); this.files.delete(norm); }
+  async deleteDirectory(p: string){ const norm = path.resolve(p); this.dirs.delete(norm); }
+  async rm(p: string, options?: { recursive?: boolean; force?: boolean }): Promise<void> {
+    const norm = path.resolve(p);
+    if (options?.recursive) {
+      for (const file of this.files.keys()) {
+        if (file.startsWith(norm)) {
+          this.files.delete(file);
+        }
+      }
+      for (const dir of this.dirs.keys()) {
+        if (dir.startsWith(norm)) {
+          this.dirs.delete(dir);
+        }
+      }
+    }
+    this.files.delete(norm);
+    this.dirs.delete(norm);
+  }
 }
