@@ -781,8 +781,8 @@ export class GitCatalogService {
         .filter(l => l.length > 0)
         .map(line => {
           const [commit, ref] = line.split(/\s+/);
-            const m = ref?.match(/^refs\/heads\/(.+)$/);
-            return m ? { name: m[1], commit } : undefined;
+          const m = ref?.match(/^refs\/heads\/(.+)$/);
+          return m ? { name: m[1], commit } : undefined;
         })
         .filter((b): b is BranchInfo => !!b);
       return branches;

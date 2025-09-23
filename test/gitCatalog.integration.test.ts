@@ -159,9 +159,9 @@ suite('Git Catalog Integration Tests', () => {
       remotes: [
         {
           url: 'https://github.com/test/repo1.git',
-            branch: 'main',
-            clonePath: repo1Clone,
-            lastUpdated: new Date().toISOString(),
+          branch: 'main',
+          clonePath: repo1Clone,
+          lastUpdated: new Date().toISOString(),
             specsHash: 'abc123',
             catalogs: []
         }
