@@ -7,6 +7,15 @@ All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog and this project adheres to Semantic Versioning when feasible.
 
 ## [Unreleased]
+
+## [0.4.0] - 2025-09-22
+### Added
+- New integration test suite (`test/real.integration.test.ts`) that uses the actual `FileService` to verify file system operations.
+- The `test:integration` script in `package.json` now runs the new test suite.
+
+### Changed
+- Bumped version to 0.4.0.
+
 ### Changed
 - Renamed "Hats" to "Presets" throughout the extension, including UI, commands, and documentation.
 

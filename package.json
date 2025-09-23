@@ -2,7 +2,7 @@
   "name": "contextshare",
   "displayName": "ContextShare",
   "description": "Manage AI assistant catalog resources (chat modes, instructions, prompts, tasks, MCP) across multiple repositories inside VS Code.",
-  "version": "0.3.6",
+  "version": "0.4.0",
   "publisher": "ContextShare",
   "engines": {
     "vscode": "^1.90.0"
@@ -419,7 +419,7 @@
     "compile": "tsc -p ./",
     "test:unit": "node dist/test/runTest.js",
     "test:all": "npm run test && npm run test:integration && npm run test:performance && npm run test:security && npm run test:ux",
-    "test:integration": "node dist/test/integration.test.js",
+    "test:integration": "node dist/test/integration.test.js && node dist/test/real.integration.test.js",
     "test:performance": "node dist/test/performance.test.js",
     "test:security": "node dist/test/security.integration.test.js",
     "test:ux": "node dist/test/userExperience.test.js",
