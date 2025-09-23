@@ -231,6 +231,10 @@ let repositories: Repository[] = await discoverRepositories(runtimeDirName);
 let currentRepo: Repository | undefined = repositories[0];
 let resources: Resource[] = [];
 
+interface PresetQuickPickItem extends vscode.QuickPickItem {
+  preset: Preset;
+}
+
 // Helper function to refresh all tree providers
 function refreshAllTrees() {
 overviewTree.refresh();
@@ -1148,7 +1152,7 @@ vscode.commands.registerCommand('copilotCatalog.presets.apply', async () => {
 if(!currentRepo){ vscode.window.showWarningMessage('No repository available.'); return; }
 const presets = await presetService.discoverPresets(currentRepo);
 if(presets.length===0){ vscode.window.showInformationMessage('No presets found (check catalog presets/, workspace .vscode/copilot-presets.json, or user presets).'); return; }
-const pick = await vscode.window.showQuickPick(presets.map(p=> ({ label: p.name, description: p.description || p.source, detail: `${p.resources.length} items`, preset: p })), { placeHolder: 'Select a Preset to apply' });
+const pick = await vscode.window.showQuickPick<PresetQuickPickItem>(presets.map(p=> ({ label: p.name, description: p.description || p.source, detail: `${p.resources.length} items`, preset: p })), { placeHolder: 'Select a Preset to apply' });
 if(!pick) return;
 // Ask whether to enforce exclusivity (deactivate non-preset resources)
 const mode = await vscode.window.showQuickPick([
@@ -1160,8 +1164,8 @@ const exclusive = mode.value === 'exclusive';
 const currentResources = catalogFilter ? 
 allResources.filter(r => r.catalogName === catalogFilter) : 
 allResources;
-const res = await presetService.applyPreset(currentRepo, currentResources, (pick as any).preset, { exclusive });
-await logger.info(`Applied preset ${(pick as any).preset.name}: activated=${res.activated} deactivated=${res.deactivated} missing=${res.missing.length} errors=${res.errors.length}`);
+const res = await presetService.applyPreset(currentRepo, currentResources, pick.preset, { exclusive });
+await logger.info(`Applied preset ${pick.preset.name}: activated=${res.activated} deactivated=${res.deactivated} missing=${res.missing.length} errors=${res.errors.length}`);
 if(res.errors.length){ vscode.window.showWarningMessage(`Preset applied with errors. Activated ${res.activated}, Deactivated ${res.deactivated}. Missing: ${res.missing.length}.`); } else { vscode.window.showInformationMessage(`Preset applied. Activated ${res.activated}, Deactivated ${res.deactivated}. Missing: ${res.missing.length}.`); }
 await loadResources(); updateStatus();
 }),
@@ -1193,12 +1197,12 @@ if(!currentRepo){ vscode.window.showWarningMessage('No repository available.'); 
 const presets = await presetService.discoverPresets(currentRepo);
 const deletable = presets.filter(p=> p.source === 'workspace' || p.source === 'user');
 if(deletable.length === 0){ vscode.window.showInformationMessage('No workspace/user presets to delete.'); return; }
-const pick = await vscode.window.showQuickPick(deletable.map(p=> ({ label: p.name, description: p.description || p.source, detail: `${p.source} preset`, preset: p })), { placeHolder: 'Select a Preset to delete' });
+const pick = await vscode.window.showQuickPick<PresetQuickPickItem>(deletable.map(p=> ({ label: p.name, description: p.description || p.source, detail: `${p.source} preset`, preset: p })), { placeHolder: 'Select a Preset to delete' });
 if(!pick) return;
-const confirm = await vscode.window.showWarningMessage(`Delete Preset "${(pick as any).preset.name}" from ${(pick as any).preset.source}?`, { modal: true }, 'Delete');
+const confirm = await vscode.window.showWarningMessage(`Delete Preset "${pick.preset.name}" from ${pick.preset.source}?`, { modal: true }, 'Delete');
 if(confirm !== 'Delete') return;
-const ok = await presetService.deletePreset((pick as any).preset, currentRepo);
-if(ok) vscode.window.showInformationMessage(`Deleted Preset "${(pick as any).preset.name}" (${(pick as any).preset.source}).`);
+const ok = await presetService.deletePreset(pick.preset, currentRepo);
+if(ok) vscode.window.showInformationMessage(`Deleted Preset "${pick.preset.name}" (${pick.preset.source}).`);
 else vscode.window.showWarningMessage('Preset not found or could not be deleted.');
 })
 ,

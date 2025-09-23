@@ -344,6 +344,11 @@ export class GitCatalogService {
           } catch {
             // Ignore fetch failure; commit may already exist
           }
+          try {
+            await this.runGit(`git -C "${remote.clonePath}" cat-file -e ${remote.lockedCommit}^{commit}`);
+          } catch {
+            throw new Error(`Locked commit ${remote.lockedCommit} does not exist locally and could not be fetched.`);
+          }
           await this.runGit(`git -C "${remote.clonePath}" checkout ${remote.lockedCommit}`);
         }
         const { stdout: newHeadStdout } = await this.runGit(`git -C "${remote.clonePath}" rev-parse HEAD`);

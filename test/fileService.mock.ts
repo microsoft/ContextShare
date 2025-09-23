@@ -27,18 +27,20 @@ export class MockFileService implements IFileService {
   async rm(p: string, options?: { recursive?: boolean; force?: boolean }): Promise<void> {
     const norm = path.resolve(p);
     if (options?.recursive) {
+      const normWithSep = norm + path.sep;
       for (const file of this.files.keys()) {
-        if (file.startsWith(norm)) {
+        if (file === norm || file.startsWith(normWithSep)) {
           this.files.delete(file);
         }
       }
       for (const dir of this.dirs.keys()) {
-        if (dir.startsWith(norm)) {
+        if (dir === norm || dir.startsWith(normWithSep)) {
           this.dirs.delete(dir);
         }
       }
+    } else {
+      this.files.delete(norm);
+      this.dirs.delete(norm);
     }
-    this.files.delete(norm);
-    this.dirs.delete(norm);
   }
 }

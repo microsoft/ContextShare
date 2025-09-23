@@ -92,7 +92,10 @@ async function runRealIntegrationTests() {
 
 // Run tests if this file is executed directly
 if (require.main === module) {
-    runRealIntegrationTests();
+    runRealIntegrationTests().catch(err => {
+        console.error(err);
+        process.exit(1);
+    });
 }
 
 export { runRealIntegrationTests };
