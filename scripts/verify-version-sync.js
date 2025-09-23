@@ -19,11 +19,19 @@ if(!manifestVersion){
   process.exit(2);
 }
 
+const shouldFix = process.argv.includes('--fix');
+
 if(pkg.version !== manifestVersion){
-  console.log(`Version mismatch detected. package.json=${pkg.version}, manifest=${manifestVersion}. Updating manifest...`);
-  const updatedXml = xml.replace(/(<Identity[^>]*Version=")([^"]+)(")/i, `$1${pkg.version}$3`);
-  fs.writeFileSync(manifestPath, updatedXml, 'utf8');
-  console.log(`Successfully updated ${manifestPath} to version ${pkg.version}`);
+  if (shouldFix) {
+    console.log(`Version mismatch detected. package.json=${pkg.version}, manifest=${manifestVersion}. Updating manifest...`);
+    const updatedXml = xml.replace(/(<Identity[^>]*Version=")([^"]+)(")/i, `$1${pkg.version}$3`);
+    fs.writeFileSync(manifestPath, updatedXml, 'utf8');
+    console.log(`Successfully updated ${manifestPath} to version ${pkg.version}`);
+  } else {
+    console.error(`ERROR: Version mismatch. package.json is ${pkg.version}, but vsixmanifest is ${manifestVersion}.`);
+    console.error('Run with --fix to automatically update the manifest.');
+    process.exit(1);
+  }
 } else {
   console.log(`Version sync OK: ${pkg.version}`);
 }

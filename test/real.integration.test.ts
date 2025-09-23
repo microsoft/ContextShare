@@ -92,10 +92,17 @@ async function runRealIntegrationTests() {
 
 // Run tests if this file is executed directly
 if (require.main === module) {
-    runRealIntegrationTests().catch(err => {
-        console.error(err);
-        process.exit(1);
-    });
+  (async () => {
+    try {
+      await runRealIntegrationTests();
+    } catch (err) {
+      console.error('Unhandled error in real integration tests:', err);
+      process.exit(1);
+    }
+  })().catch(err => {
+    console.error('Critical error in test execution:', err);
+    process.exit(1);
+  });
 }
 
 export { runRealIntegrationTests };

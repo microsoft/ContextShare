@@ -415,6 +415,7 @@
     "bundle": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --platform=node --format=cjs --external:vscode --sourcemap",
     "package": "echo 'vsce not installed in offline env'",
     "verify:version": "node scripts/verify-version-sync.js",
+    "fix:version": "node scripts/verify-version-sync.js --fix",
     "test": "npm run compile && node ./dist/test/runVscodeTests.js",
     "compile": "tsc -p ./",
     "test:unit": "node dist/test/runTest.js",
