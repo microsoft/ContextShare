@@ -439,7 +439,7 @@
     "@types/node": "^20.14.10",
     "@types/vscode": "^1.90.0",
     "@vscode/test-electron": "^2.3.9",
-    "@vscode/vsce": "^3.0.0",
+    "@vscode/vsce": "^3.6.1",
     "esbuild": "^0.25.9",
     "glob": "^11.0.3",
     "mocha": "^11.7.2",

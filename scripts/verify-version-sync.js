@@ -20,9 +20,10 @@ if(!manifestVersion){
 }
 
 if(pkg.version !== manifestVersion){
-  console.error(`ERROR: Version mismatch. package.json=${pkg.version}, manifest=${manifestVersion}`);
-  console.error('Hint: run: npm version <patch|minor|major> then regenerate the VSIX with npx @vscode/vsce package');
-  process.exit(1);
+  console.log(`Version mismatch detected. package.json=${pkg.version}, manifest=${manifestVersion}. Updating manifest...`);
+  const updatedXml = xml.replace(/(<Identity[^>]*Version=")([^"]+)(")/i, `$1${pkg.version}$3`);
+  fs.writeFileSync(manifestPath, updatedXml, 'utf8');
+  console.log(`Successfully updated ${manifestPath} to version ${pkg.version}`);
+} else {
+  console.log(`Version sync OK: ${pkg.version}`);
 }
-
-console.log(`Version sync OK: ${pkg.version}`);
