@@ -66,10 +66,10 @@ export function sanitizeErrorMessage(error: any): string {
   
   // Remove potential file paths (Windows and Unix)
   const cleaned = message
-    .replace(/[A-Za-z]:\\[^\\/:*?"<>|\r\n]*\\[^\\/:*?"<>|\r\n]*\\/g, '[REDACTED_PATH]\\')
-    .replace(/\/[^\/\s:*?"<>|\r\n]*\/[^\/\s:*?"<>|\r\n]*\//g, '/[REDACTED_PATH]/')
-    .replace(/\b(file|directory|path|folder):\s*[^\s]+/gi, '$1: [REDACTED]')
-    .replace(/\b[A-Za-z]:[\\\/][^\s]*[\\\/]/g, '[REDACTED_PATH]')
+    .replace(/[A-Za-z]:\\[^\\/:*?"<>|\r\n]*\\[^\\/:*?"<>|\r\n]*/g, '[REDACTED_PATH]')
+    .replace(/\/[^/\s:*?"<>|\r\n]*\/[^/\s:*?"<>|\r\n]*/g, '/[REDACTED_PATH]/')
+    .replace(/\b(file|directory|path|folder):\s*[^s]+/gi, '$1: [REDACTED]')
+    .replace(/\b[A-Za-z]:[\/\\][^\s]*[\/\\]/g, '[REDACTED_PATH]')
     .replace(/\b\/[^\s]*\/[^\s]*/g, '[REDACTED_PATH]');
   
   return cleaned.substring(0, 200); // Limit length

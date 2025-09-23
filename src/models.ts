@@ -15,7 +15,7 @@ export enum ResourceCategory {
 export enum ResourceState { INACTIVE = 0, ACTIVE = 1, MODIFIED = 2 }
 
 export type ResourceOrigin = 'catalog' | 'user' | 'remote';
-export type HatSource = 'catalog' | 'workspace' | 'user';
+export type PresetSource = 'catalog' | 'workspace' | 'user';
 
 // Configuration for multiple catalog sources
 export interface CatalogSource {
@@ -56,25 +56,27 @@ export interface OperationResult { success: boolean; resource: Resource; message
 
 export interface ActivateOptions { merge?: boolean }
 
-// Hat (preset) definition: a named set of catalog resource relative paths
-export interface Hat {
-	id: string;                 // unique id for tree/commands
-	name: string;               // display name
-	description?: string;       // optional description
-	resources: string[];        // list of resource.relativePath entries to activate
-	source: HatSource;          // where it came from
-	definitionPath?: string;    // absolute file path where the hat is defined (for catalog/workspace), when applicable
+// Preset (preset) definition: a named set of catalog resource relative paths
+export interface Preset {
+id: string;                 // unique id for tree/commands
+name: string;               // display name
+description?: string;       // optional description
+resources: string[];        // list of resource.relativePath entries to activate
+source: PresetSource;          // where it came from
+definitionPath?: string;    // absolute file path where the preset is defined (for catalog/workspace), when applicable
 }
 
 export interface IFileService {
-	readFile(p: string): Promise<string>;
-	writeFile(p: string, content: string): Promise<void>;
-	ensureDirectory(p: string): Promise<void>;
-	pathExists(p: string): Promise<boolean>;
-	listDirectory(p: string): Promise<string[]>;
-	stat(p: string): Promise<'file'|'dir'|'other'|'missing'>;
-	copyFile(src: string, dest: string): Promise<void>;
-	deleteFile?(p: string): Promise<void>;
+readFile(p: string): Promise<string>;
+writeFile(p: string, content: string): Promise<void>;
+ensureDirectory(p: string): Promise<void>;
+pathExists(p: string): Promise<boolean>;
+listDirectory(p: string): Promise<string[]>;
+stat(p: string): Promise<'file'|'dir'|'other'|'missing'>;
+  copyFile(src: string, dest: string): Promise<void>;
+  deleteFile?(p: string): Promise<void>;
+  deleteDirectory?(p: string): Promise<void>;
+  rm(path: string, options?: { recursive?: boolean; force?: boolean }): Promise<void>;
 }
 
 export interface IResourceService {
@@ -108,4 +110,3 @@ export class CatalogTreeItem {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	command?: any;
 }
-

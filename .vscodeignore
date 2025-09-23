@@ -18,7 +18,6 @@ dist/**
 !dist/extension.js
 
 # 2. Exclude documentation & misc (non-runtime)
-CHANGELOG.md
 SECURITY.md
 SOFTWARE_ARCHITECTURE_SPECIFICATION.md
 TESTPLAN.md
@@ -51,6 +50,7 @@ tsconfig.json
 .gitattributes
 dev-sandbox/
 node_modules/
+.env
 
 # 5. Re-include required assets (order matters)
 !package.json

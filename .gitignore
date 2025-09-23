@@ -510,3 +510,6 @@ app-registration.json
 .DS_Store?
 ehthumbs.db
 Thumbs.db
+
+# Cline memory bank
+.clinerules/

@@ -2,7 +2,7 @@
   "name": "contextshare",
   "displayName": "ContextShare",
   "description": "Manage AI assistant catalog resources (chat modes, instructions, prompts, tasks, MCP) across multiple repositories inside VS Code.",
-  "version": "0.3.6",
+  "version": "0.4.0",
   "publisher": "ContextShare",
   "engines": {
     "vscode": "^1.90.0"
@@ -22,8 +22,8 @@
   "contributes": {
     "submenus": [
       {
-        "id": "copilotCatalog.hatsMenu",
-        "label": "Hats",
+        "id": "copilotCatalog.presetsMenu",
+        "label": "Presets",
         "icon": "$(kebab-vertical)"
       },
       {
@@ -227,26 +227,26 @@
         "title": "ContextShare: Edit Activated Copy"
       },
       {
-        "command": "copilotCatalog.hats.apply",
-        "title": "ContextShare: Apply Hat (Preset)",
+        "command": "copilotCatalog.presets.apply",
+        "title": "ContextShare: Apply Preset",
         "icon": {
-          "light": "resources/icons/hat-light.svg",
-          "dark": "resources/icons/hat-dark.svg"
+          "light": "resources/icons/preset-light.svg",
+          "dark": "resources/icons/preset-dark.svg"
         }
       },
       {
-        "command": "copilotCatalog.hats.createWorkspace",
-        "title": "ContextShare: Save Hat from Active (Workspace)",
+        "command": "copilotCatalog.presets.createWorkspace",
+        "title": "ContextShare: Save Preset from Active (Workspace)",
         "icon": "$(save)"
       },
       {
-        "command": "copilotCatalog.hats.createUser",
-        "title": "ContextShare: Save Hat from Active (User)",
+        "command": "copilotCatalog.presets.createUser",
+        "title": "ContextShare: Save Preset from Active (User)",
         "icon": "$(account)"
       },
       {
-        "command": "copilotCatalog.hats.delete",
-        "title": "ContextShare: Delete Hat (Workspace/User)",
+        "command": "copilotCatalog.presets.delete",
+        "title": "ContextShare: Delete Preset (Workspace/User)",
         "icon": "$(trash)"
       },
       {
@@ -343,7 +343,7 @@
           "group": "navigation"
         },
         {
-          "submenu": "copilotCatalog.hatsMenu",
+          "submenu": "copilotCatalog.presetsMenu",
           "when": "view == copilotCatalogOverview || view == copilotCatalogChatmodes",
           "group": "navigation@b"
         },
@@ -353,24 +353,24 @@
           "group": "navigation@c"
         }
       ],
-      "copilotCatalog.hatsMenu": [
+      "copilotCatalog.presetsMenu": [
         {
-          "command": "copilotCatalog.hats.apply",
+          "command": "copilotCatalog.presets.apply",
           "when": "view == copilotCatalogOverview || view == copilotCatalogChatmodes",
           "group": "1"
         },
         {
-          "command": "copilotCatalog.hats.createWorkspace",
+          "command": "copilotCatalog.presets.createWorkspace",
           "when": "view == copilotCatalogOverview || view == copilotCatalogChatmodes",
           "group": "2"
         },
         {
-          "command": "copilotCatalog.hats.createUser",
+          "command": "copilotCatalog.presets.createUser",
           "when": "view == copilotCatalogOverview || view == copilotCatalogChatmodes",
           "group": "2"
         },
         {
-          "command": "copilotCatalog.hats.delete",
+          "command": "copilotCatalog.presets.delete",
           "when": "view == copilotCatalogOverview || view == copilotCatalogChatmodes",
           "group": "3"
         }
@@ -409,17 +409,21 @@
   },
   "license": "MIT",
   "scripts": {
-    "vscode:prepublish": "npm install && npm run build",
+    "vscode:prepublish": "npm run build",
+    "prepublishOnly": "npm run test && npm run build",
     "build": "tsc -p . && npm run bundle",
     "watch": "tsc -w -p .",
     "bundle": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --platform=node --format=cjs --external:vscode --sourcemap",
-    "package": "echo 'vsce not installed in offline env'",
+    "package": "vsce package",
+    "publish:prerelease": "dotenv -e .env -- vsce publish --pre-release",
+    "publish:stable": "dotenv -e .env -- vsce publish",
     "verify:version": "node scripts/verify-version-sync.js",
+    "fix:version": "node scripts/verify-version-sync.js --fix",
     "test": "npm run compile && node ./dist/test/runVscodeTests.js",
     "compile": "tsc -p ./",
     "test:unit": "node dist/test/runTest.js",
     "test:all": "npm run test && npm run test:integration && npm run test:performance && npm run test:security && npm run test:ux",
-    "test:integration": "node dist/test/integration.test.js",
+    "test:integration": "node dist/test/integration.test.js && node dist/test/real.integration.test.js",
     "test:performance": "node dist/test/performance.test.js",
     "test:security": "node dist/test/security.integration.test.js",
     "test:ux": "node dist/test/userExperience.test.js",
@@ -439,7 +443,9 @@
     "@types/node": "^20.14.10",
     "@types/vscode": "^1.90.0",
     "@vscode/test-electron": "^2.3.9",
-    "@vscode/vsce": "^3.0.0",
+    "@vscode/vsce": "^3.6.1",
+    "dotenv": "^17.2.2",
+    "dotenv-cli": "^10.0.0",
     "esbuild": "^0.25.9",
     "glob": "^11.0.3",
     "mocha": "^11.7.2",
