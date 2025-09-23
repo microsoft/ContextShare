@@ -50,6 +50,7 @@ tsconfig.json
 .gitattributes
 dev-sandbox/
 node_modules/
+.env
 
 # 5. Re-include required assets (order matters)
 !package.json
